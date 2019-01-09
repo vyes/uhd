@@ -1,5 +1,4 @@
-#
-# Copyright 2020 Ettus Research, a National Instruments Brand
+# Copyright 2019 Ettus Research, a National Instruments Brand
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
@@ -28,7 +27,7 @@ class LMK03328():
     def pokes8(self, addr_vals):
         """
         Apply a series of pokes.
-        pokes8([(0,1),(0,2)]) is the same as calling poke8(0,1), poke8(0,2).
+        pokes8(((0,1),(0,2))) is the same as calling poke8(0,1), poke8(0,2).
         """
         for addr, val in addr_vals:
             self.poke8(addr, val)
