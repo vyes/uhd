@@ -35,8 +35,12 @@ if(ENABLE_REGMAPS)
         ${CMAKE_CURRENT_BINARY_DIR}/lmk04816_regs.py
     )
     REG_MAPS_GEN_SOURCE(
-        ${UHD_HOST_ROOT}/lib/ic_reg_maps/gen_spcc_regs.py
-        ${CMAKE_CURRENT_BINARY_DIR}/spcc_regs.py
+        ${UHD_HOST_ROOT}/lib/ic_reg_maps/gen_lmx2572_regs.py
+        ${CMAKE_CURRENT_BINARY_DIR}/lmx2572_regs.py
+    )
+    REG_MAPS_GEN_SOURCE(
+        ${UHD_HOST_ROOT}/lib/ic_reg_maps/gen_zrcpld_regs.py
+        ${CMAKE_CURRENT_BINARY_DIR}/zr_cpld_regs.py
     )
 
     # add an ic_reg_maps target which can be referenced outside of this subdirectory

@@ -36,9 +36,10 @@
 
 
 module rfnoc_image_core #(
-  parameter        CHDR_W   = `CHDR_WIDTH,
-  parameter        MTU      = 10,
-  parameter [15:0] PROTOVER = {8'd1, 8'd0}
+  parameter        CHDR_W     = `CHDR_WIDTH,
+  parameter        MTU        = 10,
+  parameter [15:0] PROTOVER   = {8'd1, 8'd0},
+  parameter        RADIO_NIPC = 1
 ) (
   // Clocks
   input  wire         chdr_aclk,

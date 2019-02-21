@@ -1,0 +1,248 @@
+/*! \page page_zbx ZBX Daughterboard
+
+\tableofcontents
+
+\section zbx_overview Overview
+
+The ZBX daughterboard is a two-channel superheterodyne transceiver with a focus
+of telecommunication applications in the frequency range below 8 GHz. Its supports
+analog bandwidths of up to 400 MHz.
+
+The ZBX daughterboard is designed for use with the X410 series of USRPs.
+
+
+\section zbx_gain_control Gain Control
+
+The ZBX has a sophisticated gain control, capable of controlling either an
+overall gain, or manually controlling its individual gain stages. Furthermore,
+the onboard CPLD can store gain tables as well, which can be accessed from other
+RFNoC blocks via RFNoC commands.
+
+The TX path has three gain-related components: Two DSAs, as well an amplifier path.
+The former have an individual gain range of 31 dB. The amplifier path allows
+selecting one of two amplifiers, one with a nominal gain of 14 dB for lower
+frequencies, and one with a nominal gain of 21 dB for higher frequencies. Their
+actual amplification values depend on the specific frequency, and may also vary
+from device to device.  The amplifiers can be bypassed.
+
+The RX path consists of four DSAs, each with a gain range of 15 dB.
+
+Different gain behaviours of the ZBX daughterboard are controlled by <em>gain
+profiles</em>, which may be set independently for TX and RX. Different gain
+profiles have different API behaviours as explained in the rest of this section.
+
+To switch between gain profiles, use the uhd::usrp::multi_usrp::set_tx_gain_profile()
+or uhd::usrp::multi_usrp::set_rx_gain_profile() API calls. When using the RFNoC
+API, use the uhd::rfnoc::radio_control::set_tx_gain_profile() or
+uhd::rfnoc::radio_control::set_rx_gain_profile() API calls. The main difference
+between these APIs is that the multi_usrp API calls allow a default channel
+value, which the RFNoC API calls do not.
+
+As with all other devices, the following API calls set or query gain values:
+- Multi USRP:
+  - uhd::usrp::multi_usrp::set_tx_gain()
+  - uhd::usrp::multi_usrp::get_tx_gain()
+  - uhd::usrp::multi_usrp::set_rx_gain()
+  - uhd::usrp::multi_usrp::get_rx_gain()
+- RFNoC
+  - uhd::rfnoc::radio_control::set_tx_gain()
+  - uhd::rfnoc::radio_control::get_tx_gain()
+  - uhd::rfnoc::radio_control::set_rx_gain()
+  - uhd::rfnoc::radio_control::get_rx_gain()
+
+These API calls come in different flavours, with an optional 'gain name' argument.
+Note the multi_usrp API calls default to setting the overall gain value, which
+is not allowed in all gain profiles.
+
+\subsection zbx_gain_default Default Gain Profile
+
+This gain profile is active by default. It allows setting a single, scalar gain
+value. UHD will internally use a gain table to linearize the overall gain (meaning
+that a 1 dB gain increase will also increase the transmit or receive power by 1 dB).
+However, the UHD-internal gain table is not calibrated per-device, nor does it
+take into account temperature or other changes.
+
+In this gain mode, it is not possible to set the individual gain stages directly,
+but it is possible to read them back. This may be helpful when trying to fine-tune
+gain settings in software.
+
+~~~{.cpp}
+// Assumption: 'usrp' is a multi_usrp object
+usrp->set_tx_gain_profile("default"); // Only necessary if the gain profile was set to something else before
+usrp->set_tx_gain(30); // Will set the gain to 30 dB on all associated daughterboards
+std::cout << usrp->get_tx_gain() << std::endl; // Should print "30"
+usrp->set_tx_gain(0, "DSA1"); // Will cause an exception
+// Individual DSAs may still be queried. Note that even though this is an
+// attenuator, the return value is a gain (higher values mean more TX power):
+auto dsa1_gain = usrp->get_tx_gain("DSA1");
+~~~
+
+<b>ATR Behaviour:</b> The gains will apply to their respective ATR state, i.e.,
+RX gains will be applied to both the RX and full-duplex state, and TX gains will
+be applied to the TX and full-duplex state. In the idle state, gains are set to
+minimum gain.
+
+<b>RFNoC Commands:</b> All DSA values are on one register for a given ATR state,
+and the TX amp shares a register with the antenna controls.
+That means that changing the DSA values
+in this gain profile will cause two register writes (one for RX/TX, and one for
+full-duplex). Changing the TX amplifier gain value will incur another two writes.
+
+\subsection zbx_gain_manual Manual Gain Profile
+
+When more control is desired, the manual gain profile can be applied. Here, it
+is no longer possible to request an overall gain value. However, it is now
+possible to set the DSA and amplifier values directly.
+
+~~~{.cpp}
+usrp->set_tx_gain_profile("manual");
+usrp->set_tx_gain(30); // ERROR: Now, we have to specify a name
+usrp->set_tx_gain(5, "DSA1"); // Set DSA1 to 5 dB gain (equals 26 dB attenuation)
+// The following line will return an undefined value and print a warning, but
+// will not throw. That's because calling the overall gain is a common API call
+// done by many utilities, and this behaviour is considered most backward compatible.
+std::cout << usrp->get_tx_gain() << std::endl;
+std::cout << usrp->get_tx_gain("DSA1") << std::endl; // Should print '5'
+~~~
+
+\subsection zbx_gain_table CPLD-Table Gain Profile with ATR control
+
+In this profile, UHD exposes access to the gain table stored on the CPLD. By default,
+the CPLD is initialized with the same gain table as UHD uses internally, i.e.,
+there is no difference in behaviour when using this profile, unless the gain
+table is modified.
+
+Setting DSA values directly from UHD is not possible in this profile, nor is setting
+an overall gain value. However, it is now possible to load an entry from the
+CPLD gain table and apply it to the current DSA settings.
+In this profile, the ATR behaviour for the DSAs is the same as in the 'default'
+or 'manual' profiles. That means loading a DSA table entry requires two writes
+to the CPLD, one for TX/RX, and one for full-duplex.
+
+The gain "values" are no longer interpreted as dB values, but refer to gain table
+indices.
+
+An important use case of this gain profile is when testing CPLD gain tables, but
+not changing other aspects of the software control. Often, this is an intermediate
+debugging step while developing applications that use RFNoC commands to control
+the gain.
+
+Another use case of this profile is when running RFNoC applications, where the
+gain is controlled from another RFNoC block, but the ATR behaviour is left in
+its default state.
+
+~~~{.cpp}
+usrp->set_tx_gain_profile("table");
+usrp->set_tx_gain(30); // ERROR: Now, we have to specify a name
+usrp->get_radio_control().set_tx_gain(5); // This works, though. The radio_control
+                                          // object is smart enough to infer that
+					  // this is the only action left.
+// The previous line and the following have the same effect:
+usrp->set_tx_gain(5, "TABLE");
+// The CPLD DSA table entry at index 5 is now loaded and applied to the TX and
+// full-duplex ATR modes. In other words, the register values TX0_TABLE_DSA*
+// are copied to TX0_DSA*.
+// The following line will return an undefined value and print a warning, but
+// will not throw. That's because calling the overall gain is a common API call
+// done by many utilities, and this behaviour is considered most backward compatible.
+std::cout << usrp->get_tx_gain() << std::endl;
+// The following line will print the actual value of DSA1. Note, however, that
+// UHD needs to read back the value from the CPLD, since it can't know what's
+// stored on the CPLD. That means the following call will require a read from
+// the CPLD, which is not possible if there are timed commands queued up.
+std::cout << usrp->get_tx_gain("DSA1") << std::endl; // Should print whatever
+                                                     // was originally stored
+						     // in TX0_TABLE_DSA1, which
+						     // was copied to TX0_DSA1
+~~~
+
+\subsection zbx_gain_tablenoatr CPLD-Table Gain Profile without ATR control
+
+When running applications where the FPGA has full control over the gain, and the
+ATR behaviour should also be replaced by register writes, this profile may be
+used.
+
+The main difference to the previous profile is that when the radio switches
+between RX, TX, full duplex, and idle states, there is no automatic update of
+the gain values. Instead, the current gain values are selected by writing to the
+`SW_RF0_DSA_CONFIG` and `SW_RF1_DSA_CONFIG` registers. Changing these registers
+will select an entry from the `RX/TX DSA` tables. Unlike the gain tables, these
+are not prepopulated.
+
+~~~{.cpp}
+usrp->set_tx_gain_profile("table_noatr");
+usrp->set_tx_gain(30); // ERROR: Now, we have to specify a name
+usrp->get_radio_control().set_tx_gain(5); // This works, though. The radio_control
+                                          // object is smart enough to infer that
+					  // this is the only action left.
+// The previous line and the following have the same effect (but it's a different
+// effect than when using gain profile 'table'):
+usrp->set_tx_gain(5, "TABLE");
+// The CPLD SW_RF0_DSA_CONFIG register is now set to 5. That means the DSA values
+// stored in TX0_DSA1[5] and TX0_DSA2[5] are now being used, assuming no other
+// entity is sending commands to the CPLD via RFNoC.
+// Copying CPLD gain table entries into the TX0_DSA* registers is not possible
+// from software in this profile. Rather, we are hands-off and let the FPGA take
+// control.
+//
+// Let's assume that an RFNoC block has sent register writes to the radio block
+// in order to load new gain table entries, and apply them. We can still read
+// back the current DSA values (the ones being currently used on the RF chain)
+// by reading back from the CPLD.
+// This is not possible if there are timed commands queued up.
+std::cout << usrp->get_tx_gain("DSA1") << std::endl; // Should print whatever
+                                                     // is currently in TX0_DSA1[i],
+						     // where i is the value of
+						     // SW_RF0_DSA_CONFIG.
+~~~
+
+\section zbx_atr Auto-Transmit-Receive Registers (ATR)
+
+Like other USRPs, the X410 provides GPIOs to the daughterboards that communicate
+the RX/TX state. The ZBX is, by default, configured to switch settings based on
+the current state (RX, TX, full duplex, idle). For example, the TX/RX antenna
+is switched between the TX and RX channels depending on the state. A total of 4
+GPIOs are used for this purpose, two pins per channel.
+
+ZBX uses these pins to select between different RF control values
+(e.g., the aforementioned TX/RX antenna switch position; this also includes the
+front-panel LEDs) as well as DSA controls (e.g., when doing RX only, the TX gain
+stages can be set to zero to minimize leakage). Internally, this works by
+converting the ATR pins into a control word. This control word is used to index
+tables that contain different values for RF control/LEDs as well as DSAs.
+
+Example: Assume the device is transmitting, but not receiving, on channel 0. The
+FPGA will set the ATR pins for channel 0 to a binary value of 0b10, which equals
+a decimal value of 2. The transmit gain is controlled by DSA values that are
+stored in tables called TX0_DSA1 and TX0_DSA2, respectively. For the duration
+of the transmission, the DSA values at table position TX0_DSA1[2] and TX0_DSA2[2]
+will thus be used. Similarly, tables for RF path control and LEDs are used to
+configure those. This mode of using the ATR pins is called the "classic ATR" mode
+and is the default behaviour.
+
+The ZBX daughterboard provides two additional modes of utilizing those pins:
+- "Software Defined": In this mode, the ATR pins are ignored. The control word
+  is derived from another register. In this case, changing the table index
+  requires another register write as opposed to the almost instantaneous tracking
+  of the ATR state in the other modes.
+- "FPGA controlled": This is similar to the classic ATR mode, but it combines
+  the pins from channel 0 and 1. The downside is that channel 0 and 1 are no
+  longer independent, but it allows using 16 entries from the tables instead of
+  four as in the classic ATR mode.
+
+The ATR pin mode can be set independently for channel 0 and 1, and also for DSA
+tables vs. RF control/LED tables. Note that combining the "FPGA controlled" mode
+on one channel with the "classic" mode on the other channel would yield a possibly
+conflicting configuration.
+
+Usage of these modes is considered highly advanced usage of ZBX. The "FPGA
+controlled" mode is not supported by UHD without custom modifications (it is
+possible, however, to manually write to the appropriate registers to use this
+mode). Using this mode would also require modifications of the FPGA image to
+add custom controls to the ATR GPIO pins.
+
+The "software defined" mode can be enabled for the DSA tables by using the
+`table_noatr` gain profile (see the previous section).
+
+*/
+// vim:ft=doxygen:

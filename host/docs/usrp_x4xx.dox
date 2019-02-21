@@ -1,0 +1,20 @@
+/*! \page page_usrp_x4xx USRP X400 Series
+
+
+\tableofcontents
+
+\section x4xx_feature_list Comparative features list
+
+- Lots of cool stuff
+
+
+\section x4xx_getting_started Getting started
+
+This will run you through the first steps relevant to get your USRP X410
+up and running.
+
+\subsection x4xx_getting_started_assembling Assembling the X410 kit
+
+
+*/
+// vim:ft=doxygen:

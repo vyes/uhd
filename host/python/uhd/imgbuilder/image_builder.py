@@ -42,6 +42,8 @@ DEVICE_DIR_MAP = {
     'n300': 'n3xx',
     'n310': 'n3xx',
     'n320': 'n3xx',
+    'x400': 'x400',
+    'x410': 'x400',
 }
 
 # Picks the default make target per device
