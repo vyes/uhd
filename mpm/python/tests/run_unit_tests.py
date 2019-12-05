@@ -12,10 +12,7 @@ import sys
 import argparse
 from sys_utils_tests import TestNet
 from mpm_utils_tests import TestMpmUtils
-
-import importlib.util
-if importlib.util.find_spec("xmlrunner"):
-    from xmlrunner import XMLTestRunner
+from eeprom_tests import TestEeprom
 
 import importlib.util
 if importlib.util.find_spec("xmlrunner"):
@@ -25,6 +22,7 @@ TESTS = {
     '__all__': {
         TestNet,
         TestMpmUtils,
+        TestEeprom,
     },
     'n3xx': set(),
 }
