@@ -1,5 +1,10 @@
 # UHD Image Manifest File
 # Target    hash    url     SHA256
+
+# X400-Series
+x4xx_fpga_default    uhd-e4230e30da15  x4xx/uhd-e4230e30da15/x4xx_fpga_default-ge4230e30da15.zip   015ef0bb2c780261e0b33e5b4861356f26dda9a81c35e050462d3735fbf23248
+x4xx_lv_fpga_default uhd-e4230e30da15  x4xx/uhd-e4230e30da15/x4xx_lv_fpga_default-20210216.zip     3194c25617f4a199b6210e9026cbf17c7cb347bb12f224661abf159f707dd8fc
+
 # X300-Series
 x3xx_x310_fpga_default          uhd-be53058       x3xx/uhd-be53058/x3xx_x310_fpga_default-gbe53058.zip                  baa6082515704090ce701cb89dddcc2c99b42fcdb72648f0d465520aa11cfc8b
 x3xx_x300_fpga_default          uhd-be53058       x3xx/uhd-be53058/x3xx_x300_fpga_default-gbe53058.zip                  3d58e95e1e53716eec3f62067967a2baedeb8f2d1f3cfe4ecb9d01f984140291
