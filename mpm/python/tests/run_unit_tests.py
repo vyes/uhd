@@ -17,6 +17,10 @@ import importlib.util
 if importlib.util.find_spec("xmlrunner"):
     from xmlrunner import XMLTestRunner
 
+import importlib.util
+if importlib.util.find_spec("xmlrunner"):
+    from xmlrunner import XMLTestRunner
+
 TESTS = {
     '__all__': {
         TestNet,
