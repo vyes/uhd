@@ -29,6 +29,7 @@ set(test_sources
     cal_data_iq_test.cpp
     cal_data_gain_pwr_test.cpp
     chdr_parse_test.cpp
+    cal_data_dsa_test.cpp
     chdr_test.cpp
     constrained_device_args_test.cpp
     convert_test.cpp
