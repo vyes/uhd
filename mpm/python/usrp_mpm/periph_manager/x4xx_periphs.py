@@ -1510,19 +1510,38 @@ class MboardCPLD:
                                'expected value {:X}'.format(read_signature, self.SIGNATURE))
 
     def check_compat_version(self):
+        """
+        Check oldest compatible revision offset of HW against required revision.
+        The value has to match as the register offsets depends on them.
+        Furthermore there needs to be a minimum revision to check for existence
+        of functionality.
+        """
         cpld_image_compat_revision = self.peek32(self.OLDEST_COMPAT_REV_OFFSET)
         if cpld_image_compat_revision < self.OLDEST_REQ_COMPAT_REV:
-            self.log.error('MB CPLD oldest compatible revision is out of date. Update your CPLD image.')
-            raise RuntimeError('MB CPLD oldest compatible revision is out of date. Update your CPLD image.')
-        elif cpld_image_compat_revision > self.REQ_COMPAT_REV:
-            self.log.error('MB CPLD oldest compatible revision is unknown. Downgrade your CPLD image.')
-            raise RuntimeError('MB CPLD oldest compatible revision is unknown. Downgrade your CPLD image.')
-        return True
+            error_message = f'MB CPLD oldest compatible revision 0x{cpld_image_compat_revision:08x} is out of date. Update your CPLD image to 0x{self.OLDEST_REQ_COMPAT_REV:08x}.'
+            self.log.error(error_message)
+            raise RuntimeError(error_message)
+        elif cpld_image_compat_revision > self.OLDEST_REQ_COMPAT_REV:
+            error_message = f'MB CPLD oldest compatible revision 0x{cpld_image_compat_revision:08x} is unknown. Downgrade your CPLD image to 0x{self.OLDEST_REQ_COMPAT_REV:08x}.'
+            self.log.error(error_message)
+            raise RuntimeError(error_message)
+
+        if not self.has_compat_version(self.REQ_COMPAT_REV):
+            error_message = (
+                "MB CPLD compatible revision is too old. Update your CPLD"
+                f" image to at least 0x{self.REQ_COMPAT_REV:08x}.")
+            self.log.error(error_message)
+            raise RuntimeError(error_message)
 
     def has_compat_version(self, min_required_version):
         """
         Check for a minimum required version.
         """
+        if min_required_version < self.REQ_COMPAT_REV:
+            self.log.warning(
+                "Somebody called MB CPLD has_compat_version with revision"
+                f" 0x{min_required_version:x} which is older than the mandated"
+                f" version 0x{self.REQ_COMPAT_REV:x}.")
         cpld_image_compat_revision = self.peek32(self.COMPAT_REV_OFFSET)
         return cpld_image_compat_revision >= min_required_version
 
@@ -1530,10 +1549,6 @@ class MboardCPLD:
         """
         Trace build of MB CPLD
         """
-        # TODO: remove check for release
-        if not self.has_compat_version(0x20100809):
-            self.log.trace("MB CPLD build GIT Hash register not present")
-            return
         git_hash_rb = self.peek32(self.GIT_HASH_OFFSET)
         (git_hash, dirtiness_qualifier) = parse_encoded_git_hash(git_hash_rb)
         self.log.trace("MB CPLD build GIT Hash: {:07x} ({})".format(

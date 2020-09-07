@@ -49,6 +49,7 @@ class ZBX(DboardManagerBase):
 
     # CPLD compatibility revision
     # Change this revision only on breaking changes.
+    REQ_OLDEST_COMPAT_REV = 0x20110611
     REQ_COMPAT_REV = 0x20110611
 
     #########################################################################
@@ -112,20 +113,35 @@ class ZBX(DboardManagerBase):
     def _check_compat_version(self):
         """ Check compatibility of DB CPLD image and SW regmap """
         compat_revision_addr = self.regs.OLDEST_COMPAT_REVISION_addr
-        cpld_image_compat_revision = self.peek_cpld(compat_revision_addr)
-        if cpld_image_compat_revision < self.REQ_COMPAT_REV:
+        cpld_oldest_compat_revision = self.peek_cpld(compat_revision_addr)
+        if cpld_oldest_compat_revision < self.REQ_OLDEST_COMPAT_REV:
             err_msg = (
-                f'DB CPLD oldest compatible revision 0x{cpld_image_compat_revision:x}'
-                f' is out of date with required revision 0x{self.REQ_COMPAT_REV:x}. '
+                f'DB CPLD oldest compatible revision 0x{cpld_oldest_compat_revision:x}'
+                f' is out of date, the required revision is 0x{self.REQ_OLDEST_COMPAT_REV:x}. '
                 f'Update your CPLD image.')
             self.log.error(err_msg)
             raise RuntimeError(err_msg)
-        if cpld_image_compat_revision > self.REQ_COMPAT_REV:
+        if cpld_oldest_compat_revision > self.REQ_OLDEST_COMPAT_REV:
             err_msg = (
-                'DB CPLD oldest compatible revision is unknown. '
-                'Downgrade your CPLD image or update MPM.')
+                f'DB CPLD oldest compatible revision 0x{cpld_oldest_compat_revision:x}'
+                f' is newer than the expected revision 0x{self.REQ_OLDEST_COMPAT_REV:x}.'
+                ' Downgrade your CPLD image or update MPM.')
             self.log.error(err_msg)
             raise RuntimeError(err_msg)
+
+        if not self.has_compat_version(self.REQ_COMPAT_REV):
+            err_msg = (
+                "ZBX DB CPLD revision is too old. Update your"
+                f" CPLD image to at least 0x{self.REQ_COMPAT_REV:08x}.")
+            self.log.error(err_msg)
+            raise RuntimeError(err_msg)
+
+    def has_compat_version(self, min_required_version):
+        """
+        Check for a minimum required version.
+        """
+        cpld_image_compat_revision = self.peek_cpld(self.regs.REVISION_addr)
+        return cpld_image_compat_revision >= min_required_version
 
     # pylint: disable=too-many-statements
     def _cpld_set_safe_defaults(self):
