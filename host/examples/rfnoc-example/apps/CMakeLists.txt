@@ -26,7 +26,16 @@ include_directories(
 add_executable(init_gain_block
     init_gain_block.cpp
 )
+add_executable(offload_fft
+    offload_fft.cpp
+)
 target_link_libraries(init_gain_block
+    ${UHD_LIBRARIES}
+    ${Boost_LIBRARIES}
+    -Wl,--no-as-needed
+    rfnoc-example
+)
+target_link_libraries(offload_fft
     ${UHD_LIBRARIES}
     ${Boost_LIBRARIES}
     -Wl,--no-as-needed
