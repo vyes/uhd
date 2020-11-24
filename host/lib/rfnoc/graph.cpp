@@ -214,9 +214,6 @@ void graph_t::disconnect(node_ref_t src_node, node_ref_t dst_node, graph_edge_t 
         node_accessor.clear_resolve_all_callback(src_node);
     }
 
-    // Re-look up the vertex descriptor for dst_node, as the act of removing
-    // src_node may have modified it
-    dst_vertex_desc = _node_map.at(dst_node);
     if (boost::degree(dst_vertex_desc, _graph) == 0) {
         _remove_node(dst_node);
         UHD_LOG_TRACE(LOG_ID,
