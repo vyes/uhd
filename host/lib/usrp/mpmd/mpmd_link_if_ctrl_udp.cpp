@@ -145,6 +145,9 @@ size_t discover_mtu(const std::string& address,
     const double echo_timeout,
     const bool use_dpdk)
 {
+    UHD_LOG_TRACE("MPMD", "HACKY HACK: Hard-coded MTU");
+    return MPMD_10GE_DATA_FRAME_MAX_SIZE;
+
     //! Function to create a udp_simple::sptr (kernel-based or DPDK-based)
     using udp_simple_factory_t = std::function<uhd::transport::udp_simple::sptr(
         const std::string&, const std::string&)>;
