@@ -51,18 +51,14 @@ int UHD_SAFE_MAIN(int argc, char* argv[])
     // Create RFNoC graph object:
     auto graph = uhd::rfnoc::rfnoc_graph::make(args);
 
-    auto fft_blocks = graph->find_blocks<uhd::rfnoc::fft_block_control>("");
-    if (fft_blocks.empty()) {
-        std::cout << "No FFT block found." << std::endl;
-        return EXIT_FAILURE;
-    }
-
+    uhd::rfnoc::block_id_t fft_id(0, "FFT", 0);
     auto fft_block =
-        graph->get_block<uhd::rfnoc::fft_block_control>(fft_blocks.front());
+        graph->get_block<uhd::rfnoc::fft_block_control>(fft_id);
     if (!fft_block) {
         std::cout << "ERROR: Failed to extract block controller!" << std::endl;
         return EXIT_FAILURE;
     }
+    fft_block->set_length(fft_len);
     fft_block->set_scaling(fft_len);
     fft_block->set_magnitude(uhd::rfnoc::fft_magnitude::MAGNITUDE);
 
@@ -80,7 +76,7 @@ int UHD_SAFE_MAIN(int argc, char* argv[])
 
     
     std::vector<std::complex<float>> data(fft_len);
-    data[128] = std::complex<float>(1.0, 0.0);
+    data[0] = std::complex<float>(1.0, 0.0);
     tx_md.start_of_burst = true;
     tx_md.end_of_burst = true;
     tx_stream->send(&data[0], fft_len, tx_md);
