@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: GPL-2.0 OR X11
+/*
+ * Copyright (c) 2019 National Instruments Corp
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include "x410-version-info.dtsi"
+
+#include "x410-fpga.dtsi"
+
+#include "x410-common.dtsi"
+
+#include "x410-rfdc.dtsi"
+
+#include "x410-dma.dtsi"
+
+#include "x410-10gbe-port0.dtsi"
+
