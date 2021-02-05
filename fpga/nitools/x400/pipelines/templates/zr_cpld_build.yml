@@ -1,0 +1,74 @@
+#-----------------------------------------------------------------------------
+#
+# File: zr_cpld_build.py
+# Author: Max Köhler
+# Original Project: X410
+# Date: 03 September 2020
+#
+#-----------------------------------------------------------------------------
+# (c) 2020 Copyright National Instruments Corporation
+# All Rights Reserved
+# National Instruments Internal Information
+#-----------------------------------------------------------------------------
+#
+# Purpose:
+# This template should be used for building the ZR DB CPLD within the uhddev
+# repository. Exports the CPLD build results (from build directory) as artifacts
+# 'ZR CPLD image'.
+#
+# See description for the parameters below.
+#-----------------------------------------------------------------------------
+parameters:
+  ### Optional parameters
+  # Set to true if the intermediate files from build-<target> directory should
+  # be exported for debugging as artifact 'ZR CPLD build (<attempt>)'
+  - name: debug
+    type: boolean
+    default: false
+  # Checkout repository in a clean state as described in
+  # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema%2Cparameter-schema#checkout
+  - name: clean
+    type: boolean
+    default: true
+
+jobs:
+- job: ZR_CPLD
+  displayName: 'Build ZR CPLD'
+  pool:
+    name: de-dre-lab
+    demands:
+    - hwSetup
+    - quartus18.1_lite
+  timeoutInMinutes: 30
+  steps:
+    # Currently limited to be executed in same repo.
+    # Removes all unversioned files if necessary.
+    # Checkout path defined by single repository case in
+    # https://docs.microsoft.com/en-us/azure/devops/pipelines/repos/multi-repo-checkout?view=azure-devops#checkout-path
+    - checkout: self
+      clean: ${{ parameters.clean }}
+
+    # Run CPLD build
+    # Increase license server timeout as there might appear timeouts during
+    # static timing analysis which end up setting the build to fail.
+    - script: |
+        call set FLEXLM_TIMEOUT=20000000
+        call hwSetup
+        call make cpld
+      workingDirectory: $(Agent.BuildDirectory)/s/fpga/nitools/x400/zr_cpld
+      displayName: 'Build CPLD'
+
+    # Publish the final result only if all previous steps passed
+    - publish: $(Agent.BuildDirectory)/s/fpga/usrp3/top/x400/dboards/zr/cpld/build
+      artifact: 'ZR CPLD image'
+      displayName: 'Publish CPLD'
+
+    # always publish intermediate files
+    - publish: $(Agent.BuildDirectory)/s/fpga/usrp3/top/x400/dboards/zr/cpld/output_files
+      artifact: 'ZR CPLD build ($(System.JobAttempt))'
+      condition: and(always(), eq('${{ parameters.debug }}', true))
+      displayName: 'Publish Build Directory'
+
+    # Check if FPGA build left any untracked files.
+    - ${{ if eq(parameters.debug, true) }}:
+      - template: check_clean_repo_steps.yml

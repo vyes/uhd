@@ -1,0 +1,10 @@
+work/
+qcache/
+cdc_template/
+cdc_setup/
+.qverify/
+*.ini
+*.rpt
+*.log
+*.db
+qverify_cmds.tcl

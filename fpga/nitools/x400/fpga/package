@@ -1,0 +1,33 @@
+component X4XX_OSS_FPGA
+{
+   name = "X4XX_OSS_FPGA";
+   type = staticlib;
+   version = 1.0.0a0;
+   dependencies = "";
+}
+
+dependency hwbuildtools
+{
+   perforcePath = //ASIC/Tools/HwBuildTools/export/3.1;
+}
+dependency nibuild
+{
+   perforcePath = //build/nibuild/export/17.3/17.3.0f1;
+}
+dependency xilinx_64_2019.1
+{
+   perforcePath = //ASIC/Tools/HwCommon/trunk/1.0;
+}
+dependency modelsim_64_se10.6d
+{
+   perforcePath = //ASIC/Tools/HwCommon/trunk/1.0;
+}
+dependency altera_64_18.1
+{
+   perforcePath = //ASIC/Tools/HwCommon/trunk/1.0;
+}
+
+dependency nicores_CommonCores
+{
+   perforcePath = //ASIC/nicores/CoreComponents3/CommonCores/export/1.0/1.0.0a22;
+}

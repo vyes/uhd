@@ -1,0 +1,36 @@
+component ZIRCONIUM_CPLD
+{
+   name = "ZIRCONIUM_CPLD";
+   type = staticlib;
+   version = 1.0.0a0;
+   dependencies = "";
+}
+
+dependency hwbuildtools
+{
+   perforcePath = //ASIC/Tools/HwBuildTools/export/3.1;
+}
+dependency nibuild
+{
+   perforcePath = //build/nibuild/export/17.3/17.3.0f1;
+}
+dependency modelsim_64_se10.6d
+{
+   perforcePath = //ASIC/Tools/HwCommon/trunk/1.0;
+}
+dependency altera_64_20.1
+{
+   perforcePath = //ASIC/Tools/HwCommon/trunk/1.0;
+}
+dependency nicores_CommonCores
+{
+   perforcePath = //ASIC/nicores/CoreComponents3/CommonCores/export/1.0/1.0.0a27;
+}
+dependency rfcommon_RegisterBus
+{
+  perforcePath = perforce://MI/RF/HW/Common/HWCode/RegisterBus/export/1.0/1.0.0d16112808;
+}
+dependency SerialInterface
+{
+  perforcePath = perforce://MI/RF/HW/Common/HWCode/SerialInterface/export/1.1/1.1.0d16060712;
+}

@@ -1,0 +1,37 @@
+component X4XX_MB_CPLD
+{
+   name = "X4XX_MB_CPLD";
+   type = staticlib;
+   version = 1.0.0a0;
+   dependencies = "";
+}
+
+dependency hwbuildtools
+{
+   perforcePath = //ASIC/Tools/HwBuildTools/export/3.1;
+}
+dependency nibuild
+{
+   perforcePath = //build/nibuild/export/17.3/17.3.0f1;
+}
+dependency modelsim_64_se10.6d
+{
+   perforcePath = //ASIC/Tools/HwCommon/trunk/1.0;
+}
+dependency altera_64_20.1
+{
+   perforcePath = //ASIC/Tools/HwCommon/trunk/1.0;
+}
+dependency nicores_CommonCores
+{
+   perforcePath = //ASIC/nicores/CoreComponents3/CommonCores/export/1.0/1.0.0a27;
+}
+# I2C BFM dependencies
+dependency MxiComponents
+{
+   perforcePath = //PXI/MXI-5/Components/export/2.1/2.1.0b20120115;
+}
+dependency I2cInterface
+{
+  perforcePath = //ASIC/nicores/ReferenceComponents/I2cInterface/export/1.0/1.0.0a16092812;
+}

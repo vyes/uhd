@@ -1,0 +1,178 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- none
+
+# Filter for target branches and paths on PRs (see:
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/build/triggers?view=azure-devops&tabs=yaml#pr-triggers)
+pr:
+  branches:
+    include:
+    - titanium-master
+    - titanium-revb
+  paths:
+    include:
+    - fpga/*
+
+jobs:
+# -------------------------------------------------------------------
+# Build XG FPGA (100 MHz)
+# -------------------------------------------------------------------
+- template: templates/fpga_build.yml
+  parameters:
+    target: X410_XG_100
+    debug: true  # to be able to debug any failed attempts
+    clean: false # for speedup of PR testing
+    timeout: 360
+
+# -------------------------------------------------------------------
+# Build X4 FPGA (200 MHz)
+# -------------------------------------------------------------------
+- template: templates/fpga_build.yml
+  parameters:
+    target: X410_X4_200
+    debug: true  # to be able to debug any failed attempts
+    clean: false # for speedup of PR testing
+    timeout: 360
+
+# -------------------------------------------------------------------
+# Build C1 FPGA (400 MHz)
+# -------------------------------------------------------------------
+- template: templates/fpga_build.yml
+  parameters:
+    target: X410_C1_400
+    debug: true  # to be able to debug any failed attempts
+    clean: false # for speedup of PR testing
+    timeout: 360
+
+# -------------------------------------------------------------------
+# Make CPLD
+# -------------------------------------------------------------------
+- template: templates/mb_cpld_build.yml
+  parameters:
+    debug: true  # to be able to debug any failed attempts
+
+# -------------------------------------------------------------------
+# Make ZR CPLD
+# -------------------------------------------------------------------
+- template: templates/zr_cpld_build.yml
+  parameters:
+    debug: true  # to be able to debug any failed attempts
+
+# -------------------------------------------------------------------
+# Register map
+# -------------------------------------------------------------------
+- template: templates/regmap.yml
+  parameters:
+    debug: true  # to be able to debug any failed attempts
+
+# -------------------------------------------------------------------
+# Build IP
+# -------------------------------------------------------------------
+- job: IP
+  displayName: 'Build IP'
+  pool:
+    name: de-dre-lab
+    demands:
+    - ettus_fpga_build
+    - vivado2019.1
+  timeoutInMinutes: 120
+  steps:
+    - checkout: self
+      clean: false
+
+    - bash: |
+        python3 cleanup_incomplete_ip_builds.py -d $BUILD_SOURCESDIRECTORY/fpga/usrp3/top/x400
+      workingDirectory: fpga/nitools/x400/pipelines/scripts/
+      displayName: 'Incomplete IP Cleanup'
+
+    # delete everything except for the build-ip directory, which is expected to
+    # remain for speed-up
+    - bash: |
+        git clean -xdff -e build-ip
+      displayName: 'git clean'
+
+    - bash: |
+        source setupenv.sh
+        make X410_IP
+      workingDirectory: fpga/usrp3/top/x400
+
+    - publish: fpga/usrp3/top/x400/build-ip
+      artifact: 'IP ($(System.JobAttempt))'
+      condition: failed()
+
+    - publish: fpga/usrp3/top/x400/build-ip
+      artifact: 'IP'
+      condition: succeeded()
+
+    - template: templates/check_clean_repo_steps.yml
+
+
+
+# -------------------------------------------------------------------
+# NI Testbenches
+# -------------------------------------------------------------------
+- job: X400_TB
+  displayName: 'X400 testbenches'
+  pool:
+    name: de-dre-lab
+    demands:
+    - hwSetup
+    - vivado2019.1
+    - quartus18.1_lite
+  dependsOn:
+    - IP
+  timeoutInMinutes: 60
+  steps:
+    # based on https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#checkout
+    - checkout: self
+      clean: true
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        artifactName: IP
+        buildType: 'current'
+        targetPath: 'fpga/usrp3/top/x400/build-ip'
+
+    # run vsmake --clean to ensure all files are regenerated
+    - script: |
+        call hwSetup
+        call vsmake --clean
+        call make test
+      workingDirectory: 'fpga/nitools/x400/fpga'
+      displayName: 'FPGA'
+
+    - script: |
+        call hwSetup
+        call vsmake --clean
+        call make test
+      workingDirectory: 'fpga/nitools/x400/mb_cpld'
+      displayName: 'MB CPLD'
+      condition: always()
+
+    - script: |
+        call hwSetup
+        call vsmake --clean
+        call make test
+      workingDirectory: 'fpga/nitools/x400/zr_cpld'
+      displayName: 'ZR DB CPLD'
+      condition: always()
+
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/NiSimJUnit.xml'
+        searchFolder: 'fpga'
+        failTaskOnFailedTests: true
+      condition: always()
+
+    # generated regmap has issue with line endings
+    # staging the files resolves these changes and still report any modifications
+    # for the check below
+    - script: git add -A
+      displayName: 'Stage all files'
+
+    - template: templates/check_clean_repo_steps.yml
+
