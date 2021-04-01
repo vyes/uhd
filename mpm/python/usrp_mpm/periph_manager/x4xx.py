@@ -271,8 +271,8 @@ class x4xx(ZynqComponents, PeriphManagerBase):
         122.88e6*4:    (2.94912e9, 2, False, False), # RF (1M-8G)
         122.88e6*2:    (2.94912e9, 2, False, True),  # RF (1M-8G)
         122.88e6*1:    (2.94912e9, 8, False, False), # RF (1M-8G)
-        125e6*4:       (3e9, 2, False, False),       # RF (1M-8G)
-        200e6:         (3e9, 4, True, False),        # RF (Legacy Mode)
+        125e6*4:       (3.00000e9, 2, False, False), # RF (1M-8G)
+        200e6:         (3.00000e9, 4, True,  False), # RF (Legacy Mode)
     })
 
     # Describes the mapping of ADC/DAC Tiles and Blocks to DB Slot IDs
@@ -1884,7 +1884,6 @@ class x4xx(ZynqComponents, PeriphManagerBase):
         """
         self.mboard_regs_control.set_tick_period(tk_idx, period_ns)
 
-    # pylint: disable=no-self-use
     def get_clocks(self):
         """
         Gets the RFNoC-related clocks present in the FPGA design
@@ -1906,7 +1905,6 @@ class x4xx(ZynqComponents, PeriphManagerBase):
                 'freq': str(40e6),
             }
         ]
-    # pylint: enable=no-self-use
 
 
     ###########################################################################

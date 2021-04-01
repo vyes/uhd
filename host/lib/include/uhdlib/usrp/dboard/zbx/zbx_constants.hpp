@@ -48,6 +48,13 @@ static constexpr std::array<zbx_lo_t, 8> ZBX_ALL_LO = {zbx_lo_t::TX0_LO1,
     zbx_lo_t::RX1_LO1,
     zbx_lo_t::RX1_LO2};
 
+
+/******************************************************************************
+ * Important: When changing values here, check if that also requires updating
+ * the manual (host/docs/zbx.dox). If it also requires changing the website or
+ * other sales/marketing material, make sure to let the appropriate people know!
+ *****************************************************************************/
+
 enum class zbx_lo_source_t { internal, external };
 static constexpr zbx_lo_source_t ZBX_DEFAULT_LO_SOURCE = zbx_lo_source_t::internal;
 
