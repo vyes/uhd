@@ -1518,11 +1518,17 @@ class MboardCPLD:
         """
         cpld_image_compat_revision = self.peek32(self.OLDEST_COMPAT_REV_OFFSET)
         if cpld_image_compat_revision < self.OLDEST_REQ_COMPAT_REV:
-            error_message = f'MB CPLD oldest compatible revision 0x{cpld_image_compat_revision:08x} is out of date. Update your CPLD image to 0x{self.OLDEST_REQ_COMPAT_REV:08x}.'
+            error_message = (
+                'MB CPLD oldest compatible revision'
+                f' 0x{cpld_image_compat_revision:08x} is out of date. Update'
+                f' your CPLD image to 0x{self.OLDEST_REQ_COMPAT_REV:08x}.')
             self.log.error(error_message)
             raise RuntimeError(error_message)
         elif cpld_image_compat_revision > self.OLDEST_REQ_COMPAT_REV:
-            error_message = f'MB CPLD oldest compatible revision 0x{cpld_image_compat_revision:08x} is unknown. Downgrade your CPLD image to 0x{self.OLDEST_REQ_COMPAT_REV:08x}.'
+            error_message = (
+                'MB CPLD oldest compatible revision'
+                f' 0x{cpld_image_compat_revision:08x} is unknown. Downgrade'
+                f' your CPLD image to 0x{self.OLDEST_REQ_COMPAT_REV:08x}.')
             self.log.error(error_message)
             raise RuntimeError(error_message)
 
