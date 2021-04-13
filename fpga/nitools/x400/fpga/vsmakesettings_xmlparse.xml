@@ -22,7 +22,7 @@
   <searchpath library="work" path="../../../usrp3/top/x400/dboards/*.v"/>
   <searchpath library="work" path="../mb_cpld/sim/clock_period_check.vhd"/>
   <searchpath library="work" path="../mb_cpld/sim/regmap"/>
-  <nosynthesis expr="{cpld}"/>
+  <nosynthesis expr="*/cpld/*"/>
   <nosynthesis expr="{nitools}"/>
 
   <!-- Additional paths for XmlParse -->

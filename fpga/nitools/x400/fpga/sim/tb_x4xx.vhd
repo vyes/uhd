@@ -33,8 +33,14 @@ architecture test of tb_x4xx is
       DB0_TX_N           : out std_logic_vector(1 downto 0);
       DB1_TX_P           : out std_logic_vector(1 downto 0);
       DB1_TX_N           : out std_logic_vector(1 downto 0);
-      MGT_REFCLK_LMK_P   : in  std_logic_vector(3 downto 0);
-      MGT_REFCLK_LMK_N   : in  std_logic_vector(3 downto 0);
+      MGT_REFCLK_LMK0_P  : in  std_logic;
+      MGT_REFCLK_LMK0_N  : in  std_logic;
+      MGT_REFCLK_LMK1_P  : in  std_logic;
+      MGT_REFCLK_LMK1_N  : in  std_logic;
+      MGT_REFCLK_LMK2_P  : in  std_logic;
+      MGT_REFCLK_LMK2_N  : in  std_logic;
+      MGT_REFCLK_LMK3_P  : in  std_logic;
+      MGT_REFCLK_LMK3_N  : in  std_logic;
       DB0_GPIO           : inout std_logic_vector(19 downto 0);
       DB0_SYNTH_SYNC     : out std_logic;
       DB1_GPIO           : inout std_logic_vector(19 downto 0);

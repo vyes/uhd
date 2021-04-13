@@ -1,0 +1,10 @@
+.qverify/
+cdc/
+rdc/
+work/
+.qverify_ui_local_prefs
+transcript
+modelsim.ini
+qverify.log
+qverify_cmds.tcl
+nicdc.rpt

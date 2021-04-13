@@ -27,6 +27,9 @@
   <searchpath library="work" path="../../../usrp3/lib/xge_interface/..."/>
   <searchpath library="work" path="../../../usrp3/lib/packet_proc/..."/>
   <searchpath library="work" path="../../../usrp3/lib/xge/rtl/verilog/..."/>
+  
+  <!-- Ignore Questa CDC analysis files -->
+  <removalexpr expr="*/nicdc/*"/>
 
   <help>
 
