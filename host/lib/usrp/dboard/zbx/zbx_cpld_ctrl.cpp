@@ -288,7 +288,7 @@ void zbx_cpld_ctrl::set_tx_antenna_switches(
 
     // Antenna settings: TX/RX, CAL_LOOPBACK
     if (channel == 0) {
-        if (antenna == "TX/RX") {
+        if (is_trx_sma(antenna)) {
             // clang-format off
             static const std::map<tx_amp,
                     std::pair<zr_cpld_regs_t::TX0_ANT_11_t, zr_cpld_regs_t::TX0_ANT_10_t>> amp_map{
@@ -309,7 +309,7 @@ void zbx_cpld_ctrl::set_tx_antenna_switches(
         }
     } else {
         // Antenna settings: TX/RX, CAL_LOOPBACK, POWER_DETECT, TERMINATION
-        if (antenna == "TX/RX") {
+        if (is_trx_sma(antenna)) {
             // clang-format off
              static const std::map<tx_amp,
                      std::pair<zr_cpld_regs_t::TX1_ANT_11_t, zr_cpld_regs_t::TX1_ANT_10_t>> amp_map{
@@ -338,7 +338,7 @@ void zbx_cpld_ctrl::set_rx_antenna_switches(
 
     // Antenna settings: RX2, TX/RX, CAL_LOOPBACK, TERMINATION
     if (channel == 0) {
-        if (antenna == "TX/RX") {
+        if (is_trx_sma(antenna)) {
             _regs.RX0_ANT_1[idx]  = zr_cpld_regs_t::RX0_ANT_1_TX_RX;
             _regs.TX0_ANT_11[idx] = zr_cpld_regs_t::TX0_ANT_11_TX_RX;
         } else if (antenna == "CAL_LOOPBACK") {
@@ -347,14 +347,14 @@ void zbx_cpld_ctrl::set_rx_antenna_switches(
             _regs.TX0_ANT_11[idx] = zr_cpld_regs_t::TX0_ANT_11_BYPASS_AMP;
         } else if (antenna == "TERMINATION") {
             _regs.RX0_ANT_1[idx] = zr_cpld_regs_t::RX0_ANT_1_TERMINATION;
-        } else if (antenna == "RX2") {
+        } else if (is_rx_sma(antenna)) {
             _regs.RX0_ANT_1[idx] = zr_cpld_regs_t::RX0_ANT_1_RX2;
         } else {
             UHD_LOG_WARNING(_log_id,
                 "ZBX Radio: RX Antenna setting not recognized: \"" << antenna << "\"");
         }
     } else {
-        if (antenna == "TX/RX") {
+        if (is_trx_sma(antenna)) {
             _regs.RX1_ANT_1[idx]  = zr_cpld_regs_t::RX1_ANT_1_TX_RX;
             _regs.TX1_ANT_11[idx] = zr_cpld_regs_t::TX1_ANT_11_TX_RX;
         } else if (antenna == "CAL_LOOPBACK") {
@@ -363,7 +363,7 @@ void zbx_cpld_ctrl::set_rx_antenna_switches(
             _regs.TX1_ANT_11[idx] = zr_cpld_regs_t::TX1_ANT_11_BYPASS_AMP;
         } else if (antenna == "TERMINATION") {
             _regs.RX1_ANT_1[idx] = zr_cpld_regs_t::RX1_ANT_1_TERMINATION;
-        } else if (antenna == "RX2") {
+        } else if (is_rx_sma(antenna)) {
             _regs.RX1_ANT_1[idx] = zr_cpld_regs_t::RX1_ANT_1_RX2;
         } else {
             UHD_LOG_WARNING(_log_id,

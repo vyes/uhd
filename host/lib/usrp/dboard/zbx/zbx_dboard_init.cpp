@@ -69,6 +69,19 @@ std::ostream& operator<<(
 
 namespace uhd { namespace usrp { namespace zbx {
 
+namespace {
+
+std::string canonicalize_antenna(std::string antenna) {
+    if (antenna == "TX/RX0") {
+        return "TX/RX";
+    } else if (antenna == "RX1") {
+        return "RX2";
+    }
+    return antenna;
+}
+
+}
+
 void zbx_dboard_impl::_init_cpld()
 {
     // CPLD
@@ -235,7 +248,7 @@ uhd::usrp::pwr_cal_mgr::sptr zbx_dboard_impl::_init_power_cal(
     std::string cal_serial =
         db_serial + "#" + subtree->access<std::string>(fe_path / "name").get();
     std::string antenna = pwr_cal_mgr::sanitize_antenna_name(
-        subtree->access<std::string>(fe_path / "antenna/value").get());
+        canonicalize_antenna(subtree->access<std::string>(fe_path / "antenna/value").get()));
     /* Now create a gain group for this. */
     /*_?x_gain_groups won't work, because it doesn't group the */
     /*gains we want them to be grouped. */

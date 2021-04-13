@@ -143,11 +143,23 @@ static const std::map<double, tx_amp> ZBX_TX_GAIN_AMP_MAP = {
     {ZBX_TX_LOWBAND_GAIN, tx_amp::LOWBAND},
     {ZBX_TX_HIGHBAND_GAIN, tx_amp::HIGHBAND}};
 
-constexpr char ZBX_DEFAULT_TX_ANTENNA[]               = "TX/RX";
-constexpr char ZBX_DEFAULT_RX_ANTENNA[]               = "RX2";
+constexpr char ZBX_DEFAULT_TX_ANTENNA[]               = "TX/RX0";
+constexpr char ZBX_DEFAULT_RX_ANTENNA[]               = "RX1";
 static const std::vector<std::string> ZBX_RX_ANTENNAS = {
-    "TX/RX", "RX2", "CAL_LOOPBACK", "TERMINATION"};
-static const std::vector<std::string> ZBX_TX_ANTENNAS = {"TX/RX", "CAL_LOOPBACK"};
+    "TX/RX0", "TX/RX", "RX1", "RX2", "CAL_LOOPBACK", "TERMINATION"};
+static const std::vector<std::string> ZBX_TX_ANTENNAS = {"TX/RX0", "TX/RX", "CAL_LOOPBACK"};
+
+
+// Supported names for antenna connector
+inline bool is_trx_sma(const std::string& antenna)
+{
+    return (antenna == "TX/RX" || antenna == "TX/RX0");
+}
+
+inline bool is_rx_sma(const std::string& antenna)
+{
+    return (antenna == "RX2" || antenna == "RX1");
+}
 
 //! Low-band LO
 static constexpr char ZBX_LO1[] = "LO1";
