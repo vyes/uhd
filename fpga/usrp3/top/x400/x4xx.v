@@ -49,8 +49,14 @@ module x4xx (
   //-----------------------------------
 
   // Clock references
-  input wire [3:0] MGT_REFCLK_LMK_P,
-  input wire [3:0] MGT_REFCLK_LMK_N,
+  input  wire MGT_REFCLK_LMK0_P,
+  input  wire MGT_REFCLK_LMK0_N,
+  input  wire MGT_REFCLK_LMK1_P,
+  input  wire MGT_REFCLK_LMK1_N,
+  input  wire MGT_REFCLK_LMK2_P,
+  input  wire MGT_REFCLK_LMK2_N,
+  input  wire MGT_REFCLK_LMK3_P,
+  input  wire MGT_REFCLK_LMK3_N,
 
   // Quad 128 transceivers: QSFP28 (1)
   `ifdef QSFP1_0
@@ -1631,8 +1637,8 @@ module x4xx (
     .PORTNUM   (0)
   ) x4xx_qsfp_wrapper_0 (
     .areset         (areset),
-    .refclk_p       (MGT_REFCLK_LMK_P[0]),
-    .refclk_n       (MGT_REFCLK_LMK_N[0]),
+    .refclk_p       (MGT_REFCLK_LMK0_P),
+    .refclk_n       (MGT_REFCLK_LMK0_N),
     .clk100         (clk100),                // IP configured for 100 MHz DClk
     .bus_rst        (clk200_rst),
     .bus_clk        (clk200),
@@ -1739,8 +1745,8 @@ module x4xx (
     .PORTNUM   (1)
   ) x4xx_qsfp_wrapper_1 (
     .areset         (areset),
-    .refclk_p       (MGT_REFCLK_LMK_P[3]),
-    .refclk_n       (MGT_REFCLK_LMK_N[3]),
+    .refclk_p       (MGT_REFCLK_LMK3_P),
+    .refclk_n       (MGT_REFCLK_LMK3_N),
     .clk100         (clk100),                // IP configured for 100 MHz DClk
     .bus_rst        (clk200_rst),
     .bus_clk        (clk200),
@@ -2191,7 +2197,7 @@ module x4xx (
 
   // Requires QSFP1_0 because of limited input options for this buffer.
   // This output on (MGTREFCLK1 128)(QUAD128 is QSFP1).
-  // The input is MGT_REFCLK_LMK_P[3] (MGT_REFCLK1 129)(QUAD 129 not used).
+  // The input is MGT_REFCLK_LMK3_P (MGT_REFCLK1 129)(QUAD 129 not used).
   `ifdef QSFP1_0
   OBUFDS_GTE4 #(
     .REFCLK_EN_TX_PATH (1'b1),

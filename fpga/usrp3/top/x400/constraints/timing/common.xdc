@@ -24,14 +24,14 @@ create_clock -name pll_ref_clk -period $pll_ref_clk_period [get_ports PLL_REFCLK
 
 # MGT Clocks
 #    Clock Reference   |   Frequency      |   Purpose
-#   MGT_REFCLK_LMK[0]  |  156.25/125 MHz  |  10 GbE
-#   MGT_REFCLK_LMK[1]  |  100.00 MHz      |  Reserved
-#   MGT_REFCLK_LMK[2]  |  100.00 MHz      |  Reserved
-#   MGT_REFCLK_LMK[3]  |  156.25/125 MHz  |  10 GbE
-create_clock -name mgt_ref_0 -period  6.400 [get_ports MGT_REFCLK_LMK_P[0]]
-create_clock -name mgt_ref_1 -period 10.000 [get_ports MGT_REFCLK_LMK_P[1]]
-create_clock -name mgt_ref_2 -period 10.400 [get_ports MGT_REFCLK_LMK_P[2]]
-create_clock -name mgt_ref_3 -period  6.400 [get_ports MGT_REFCLK_LMK_P[3]]
+#   MGT_REFCLK_LMK0    |  156.25/125 MHz  |  10 GbE
+#   MGT_REFCLK_LMK1    |  100.00 MHz      |  Reserved
+#   MGT_REFCLK_LMK2    |  100.00 MHz      |  Reserved
+#   MGT_REFCLK_LMK3    |  156.25/125 MHz  |  10 GbE
+create_clock -name mgt_ref_0 -period  6.400 [get_ports MGT_REFCLK_LMK0_P]
+create_clock -name mgt_ref_1 -period 10.000 [get_ports MGT_REFCLK_LMK1_P]
+create_clock -name mgt_ref_2 -period 10.400 [get_ports MGT_REFCLK_LMK2_P]
+create_clock -name mgt_ref_3 -period  6.400 [get_ports MGT_REFCLK_LMK3_P]
 
 # Virtual clocks for constraining misc. I/Os.
 create_clock -name async_in_clk  -period 50.00

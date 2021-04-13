@@ -97,8 +97,8 @@ module x4xx_qsfp_wrapper #(
   localparam logic [3:0] ISAURORA = { 3'b0,PROTOCOL[0] == `MGT_Aurora };
 
 
-  `include "../../../../lib/axi4_sv/axi.vh"
-  `include "../../../../lib/axi4lite_sv/axi_lite.vh"
+  `include "../../lib/axi4_sv/axi.vh"
+  `include "../../lib/axi4lite_sv/axi_lite.vh"
 
 
   //---------------------------------------------------------------------------

@@ -136,8 +136,9 @@ module x4xx_qsfp_wrapper_temp #(
 
   import PkgAxiLite::*;
 
-  `include "../../../../lib/axi4lite_sv/axi_lite.vh"
-  `include "../../../../lib/axi4s_sv/axi4s.vh"
+  `include "../../lib/axi4lite_sv/axi_lite.vh"
+  `include "../../lib/axi4s_sv/axi4s.vh"
+
 
   //---------------------------------------------------------------------------
   // AXI Interfaces
@@ -300,7 +301,7 @@ module x4xx_qsfp_wrapper_temp #(
     .CHDR_W   (CHDR_W),
     .BYTE_MTU (BYTE_MTU),
     .PORTNUM  (PORTNUM)
-  ) x4xx_qsfp_wrapperx (
+  ) x4xx_qsfp_wrapper_i (
     .areset         (areset),
     .refclk_p       (refclk_p),
     .refclk_n       (refclk_n),

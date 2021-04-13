@@ -91,10 +91,13 @@ module rfdc_timing_control #(
       wire [  2-1:0] rf_ctrlport_resp_status;
       wire [ 32-1:0] rf_ctrlport_resp_data;
 
+      localparam [31:0] RFDC_TIMING_WINDOW_SIZE_W = $clog2(RFDC_TIMING_WINDOW_SIZE);
+      localparam [31:0] DB_WINDOW_SIZE_W          = $clog2(DB_WINDOW_SIZE);
+
       ctrlport_decoder_param #(
         .NUM_SLAVES  (2),
-        .PORT_BASE   ({ RFDC_TIMING_WINDOW[19:0], DB_WINDOW[19:0] }),
-        .PORT_ADDR_W ({ $clog2(RFDC_TIMING_WINDOW_SIZE), $clog2(DB_WINDOW_SIZE) })
+        .PORT_BASE   ({ RFDC_TIMING_WINDOW[19:0],  DB_WINDOW[19:0]  }),
+        .PORT_ADDR_W ({ RFDC_TIMING_WINDOW_SIZE_W, DB_WINDOW_SIZE_W })
       ) ctrlport_decoder_param_i (
         .ctrlport_clk            (clk),
         .ctrlport_rst            (rst),

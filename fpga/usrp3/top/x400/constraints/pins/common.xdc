@@ -11,17 +11,17 @@
 # Pin constraints for the MGTs reference clocks
 ###############################################################################
 
-set_property PACKAGE_PIN U33 [get_ports {MGT_REFCLK_LMK_P[0]}]
-set_property PACKAGE_PIN U34 [get_ports {MGT_REFCLK_LMK_N[0]}]
+set_property PACKAGE_PIN U33 [get_ports {MGT_REFCLK_LMK0_P}]
+set_property PACKAGE_PIN U34 [get_ports {MGT_REFCLK_LMK0_N}]
 
-set_property PACKAGE_PIN T31 [get_ports {MGT_REFCLK_LMK_P[1]}]
-set_property PACKAGE_PIN T32 [get_ports {MGT_REFCLK_LMK_N[1]}]
+set_property PACKAGE_PIN T31 [get_ports {MGT_REFCLK_LMK1_P}]
+set_property PACKAGE_PIN T32 [get_ports {MGT_REFCLK_LMK1_N}]
 
-set_property PACKAGE_PIN W33 [get_ports {MGT_REFCLK_LMK_P[2]}]
-set_property PACKAGE_PIN W34 [get_ports {MGT_REFCLK_LMK_N[2]}]
+set_property PACKAGE_PIN W33 [get_ports {MGT_REFCLK_LMK2_P}]
+set_property PACKAGE_PIN W34 [get_ports {MGT_REFCLK_LMK2_N}]
 
-set_property PACKAGE_PIN V31 [get_ports {MGT_REFCLK_LMK_P[3]}]
-set_property PACKAGE_PIN V32 [get_ports {MGT_REFCLK_LMK_N[3]}]
+set_property PACKAGE_PIN V31 [get_ports {MGT_REFCLK_LMK3_P}]
+set_property PACKAGE_PIN V32 [get_ports {MGT_REFCLK_LMK3_N}]
 
 
 ###############################################################################
