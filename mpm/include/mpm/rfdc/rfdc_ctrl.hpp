@@ -562,6 +562,16 @@ public:
     bool get_data_fifo_state(uint32_t tile_id, bool is_dac);
 
     /**
+     * Clears the interrupts for the data FIFO (FIFOUSRDAT)
+     *
+     * @param    tile_id the ID of the tile to get
+     * @param    block_id specify ADC/DAC block
+     * @param    is_dac whether the tile is a DAC (true) or ADC (false)
+     */
+    void clear_data_fifo_interrupts(
+        const uint32_t tile_id, const uint32_t block_id, const bool is_dac);
+
+    /**
      * Perform Multi-tile Synchronization on ADC or DAC tiles
      *
      * @param    tiles tiles vector to specify which DAC/ADC tiles to synchronize
@@ -660,8 +670,7 @@ void export_rfdc(py::module& top_module)
         .def("set_mixer_mode", &rfdc_ctrl::set_mixer_mode)
         .def("set_nyquist_zone", &rfdc_ctrl::set_nyquist_zone)
         .def("set_calibration_mode", &rfdc_ctrl::set_calibration_mode)
-        .def("enable_inverse_sinc_filter",
-            &rfdc_ctrl::enable_inverse_sinc_filter)
+        .def("enable_inverse_sinc_filter", &rfdc_ctrl::enable_inverse_sinc_filter)
         .def("set_sample_rate", &rfdc_ctrl::set_sample_rate)
         .def("get_sample_rate", &rfdc_ctrl::get_sample_rate)
         .def("set_if", &rfdc_ctrl::set_if)
@@ -677,6 +686,7 @@ void export_rfdc(py::module& top_module)
         .def("get_fabric_clk_div", &rfdc_ctrl::get_fabric_clk_div)
         .def("set_data_fifo_state", &rfdc_ctrl::set_data_fifo_state)
         .def("get_data_fifo_state", &rfdc_ctrl::get_data_fifo_state)
+        .def("clear_data_fifo_interrupts", &rfdc_ctrl::clear_data_fifo_interrupts)
         .def("sync_tiles", &rfdc_ctrl::sync_tiles)
         .def("get_tile_latency", &rfdc_ctrl::get_tile_latency)
         .def("get_tile_offset", &rfdc_ctrl::get_tile_offset)

@@ -611,6 +611,20 @@ bool rfdc_ctrl::get_data_fifo_state(uint32_t tile_id, bool is_dac)
     return (bool)enabled;
 }
 
+void rfdc_ctrl::clear_data_fifo_interrupts(
+    const uint32_t tile_id, const uint32_t block_id, const bool is_dac)
+{
+    if (XRFdc_IntrClr(rfdc_inst_ptr,
+            static_cast<u32>(is_dac),
+            tile_id,
+            block_id,
+            XRFDC_IXR_FIFOUSRDAT_MASK)
+        != XRFDC_SUCCESS) {
+        throw mpm::runtime_error(
+            "Error in RFDC code: Failed to clear data FIFO interrupts");
+    }
+}
+
 bool rfdc_ctrl::sync_tiles(const std::vector<uint32_t>& tiles, bool is_dac, uint32_t latency)
 {
     XRFdc_MultiConverter_Sync_Config* sync_config = is_dac ? &rfdc_dac_sync_config

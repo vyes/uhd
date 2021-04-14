@@ -713,10 +713,12 @@ class x4xx(ZynqComponents, PeriphManagerBase):
                        "(PID: 0x%04x)" % (name, board_info["pid"]))
         return True
 
-    def _set_interpolation_decimation(self, tile, block, is_dac=False, factor=8):
+    def _set_interpolation_decimation(self, tile, block, is_dac, factor):
         """
         Set the provided interpolation/decimation factor to the
         specified ADC/DAC tile, block
+
+        Only gets called from set_reset_rfdc().
         """
         # Map the interpolation/decimation factor to fabric words.
         # Keys: is_dac (False -> ADC, True -> DAC) and factor
@@ -727,7 +729,7 @@ class x4xx(ZynqComponents, PeriphManagerBase):
         # Disable FIFO
         self._rfdc_ctrl.set_data_fifo_state(tile, is_dac, False)
         # Define fabric rate based on given factor.
-        fab_words = FABRIC_WORDS_ARRAY[is_dac][int(factor)]
+        fab_words = FABRIC_WORDS_ARRAY[is_dac].get(int(factor))
         if fab_words == -1:
             raise RuntimeError('Unsupported dec/int factor in RFDC')
         # Define dec/int constant based on integer factor
@@ -771,10 +773,7 @@ class x4xx(ZynqComponents, PeriphManagerBase):
                 "  Read words: %d",
                 self._rfdc_ctrl.get_data_read_rate(tile, block, False))
         # Clear interrupts
-        # TODO: Add XRFdc_IntrClr API function to clear interrupts with
-        # this mask: XRFDC_IXR_FIFOUSRDAT_MASK 0x0000000FU
-        self.log.warning("Not clearing FIFO interrupts for %s tile %d, block %d",
-                         'DAC' if is_dac else 'ADC', tile, block)
+        self._rfdc_ctrl.clear_data_fifo_interrupts(tile, block, is_dac)
         # Enable FIFO
         self._rfdc_ctrl.set_data_fifo_state(tile, is_dac, True)
 
