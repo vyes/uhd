@@ -461,10 +461,6 @@ class x4xx(ZynqComponents, PeriphManagerBase):
                 default_args.get('master_clock_rate', X400_DEFAULT_MASTER_CLOCK_RATE))
         )
 
-        # self.set_time_source(
-        #     default_args.get('time_source', X400_DEFAULT_TIME_SOURCE)
-        # )
-
     def _init_meas_clock(self):
         """
         Initialize the TDC measurement clock. After this function returns, the
@@ -1297,38 +1293,6 @@ class x4xx(ZynqComponents, PeriphManagerBase):
         # exported either.
         if clock_source in (ClockingAuxBrdControl.SOURCE_EXTERNAL, CLOCK_SOURCE_MBOARD):
             self._clocking_auxbrd.export_clock(enable=False)
-
-        if time_source == 'qsfp0':
-            # This error is specific to slave and master mode for White Rabbit.
-            # Grand Master mode will require the external or gpsdo
-            # sources (not supported).
-            if time_source in ('qsfp0', 'qsfp1') \
-                    and self.get_clock_source() != CLOCK_SOURCE_MBOARD:
-                error_msg = "Time source {} requires `internal` clock source!".format(
-                    time_source)
-                self.log.error(error_msg)
-                raise RuntimeError(error_msg)
-            qsfp_time_source_images = ('WX',)
-            if self.updateable_components['fpga']['type'] not in qsfp_time_source_images:
-                self.log.error("{} time source requires FPGA types {}" \
-                               .format(time_source, qsfp_time_source_images))
-                raise RuntimeError("{} time source requires FPGA types {}" \
-                               .format(time_source, qsfp_time_source_images))
-            # Only open UIO to the WR core once we're guaranteed it exists.
-            wr_regs_control = WhiteRabbitRegsControl(
-                self.wr_regs_label, self.log)
-            # Wait for time source to become ready. Only applies to QSFP0/1. All other
-            # targets start their PPS immediately.
-            self.log.debug("Waiting for {} timebase to lock..." \
-                           .format(time_source))
-            if not poll_with_timeout(
-                    lambda: wr_regs_control.get_time_lock_status(),
-                    40000, # Try for x ms... this number is set from a few benchtop tests
-                    1000, # Poll every... second! why not?
-                ):
-                self.log.error("{} timebase failed to lock within 40 seconds. Status: 0x{:X}" \
-                               .format(time_source, wr_regs_control.get_time_lock_status()))
-                raise RuntimeError("Failed to lock QSFP timebase.")
 
     def init_clocks(self,
                     clock_source,
