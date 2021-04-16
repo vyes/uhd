@@ -221,7 +221,6 @@ module x4xx (
   output        QSFP1_RESET_n,
   output        QSFP1_LPMODE_n,
 
-  // input         PCIE_RESET,
 
   inout  [11:0] DIOA_FPGA,
   inout  [11:0] DIOB_FPGA,
@@ -229,16 +228,22 @@ module x4xx (
   output        CPLD_JTAG_OE_n,
 
   output        PPS_LED,
-  // inout         CRYPTO_SDA,
   inout         TRIG_IO,
   output        PL_CPLD_JTAGEN,
-  // input  [ 1:0] IPASS_SIDEBAND,
-  // input         PL_CPLD_IRQ,
   output        PL_CPLD_CS0_n, // Dual-purpose CPLD JTAG TMS
-  output        PL_CPLD_CS1_n,
+  output        PL_CPLD_CS1_n
+
+  ///////////////////////////////////
+  //
+  // Unused pins
+  //
+  ///////////////////////////////////
+  // input  [ 1:0] IPASS_SIDEBAND,
+  // input         PCIE_RESET,
+  // input         PL_CPLD_IRQ,
+  // output        FPGA_TEST,
   // output        TDC_SPARE_0,
   // output        TDC_SPARE_1
-  output        FPGA_TEST
 
 );
 
@@ -2319,27 +2324,6 @@ module x4xx (
     .version_info                    (x4xx_core_version_info)
   );
 
-  // ----------------------------------------------------------------
-  // TODO: Temporary test port toggling logic for bringup.
-  //       Remove for final implementation.
-
-  reg [7:0] counter_clk40;
-
-  always @(posedge clk40) begin
-    if (clk40_rstn == 1'b0) begin
-      // reset
-      counter_clk40 <= 8'b0;
-    end
-    else begin
-      counter_clk40 <= counter_clk40 + 1'b1;
-    end
-  end
-
-  // counter_clk40 is an 8-bit counter running at 40 MHz.
-  // Since we use the MSB to toggle the test port, we should expect
-  // to see a square waveform at 156.25 kHz = 40 MHz / (2^8).
-  assign FPGA_TEST = counter_clk40[7];
-
   // Test eCPRI clock output.
   //vhook_warn fabric_clk propagation: Remove/Update this logic.
 
@@ -2417,12 +2401,12 @@ endmodule
 //        <li> Version last modified: @.VERSIONING_REGS_REGMAP..VERSION_LAST_MODIFIED
 //      </info>
 //      <value name="FPGA_CURRENT_VERSION_MAJOR"           integer="7"/>
-//      <value name="FPGA_CURRENT_VERSION_MINOR"           integer="1"/>
+//      <value name="FPGA_CURRENT_VERSION_MINOR"           integer="2"/>
 //      <value name="FPGA_CURRENT_VERSION_BUILD"           integer="0"/>
 //      <value name="FPGA_OLDEST_COMPATIBLE_VERSION_MAJOR" integer="7"/>
 //      <value name="FPGA_OLDEST_COMPATIBLE_VERSION_MINOR" integer="0"/>
 //      <value name="FPGA_OLDEST_COMPATIBLE_VERSION_BUILD" integer="0"/>
-//      <value name="FPGA_VERSION_LAST_MODIFIED_TIME"      integer="0x21020314"/>
+//      <value name="FPGA_VERSION_LAST_MODIFIED_TIME"      integer="0x21041616"/>
 //    </enumeratedtype>
 //  </group>
 //</regmap>

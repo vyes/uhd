@@ -1,15 +1,15 @@
 #
-# Copyright 2019 Ettus Research, A National Instruments Brand
-# SPDX-License-Identifier: LGPL-3.0
+# Copyright 2021 Ettus Research, a National Instruments Brand
 #
-# Pin Definitions for the X4xx Product Family.
-#   zHD+iPASS Ports (0 and 1)
-#   PCIe-related Ports
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# Description:
+#   zHD+iPASS ports (0 and 1) pin constraints for X410.
 #
 
-######################################################################
+###############################################################################
 # Pin constraints for the MGTs (zHD+iPASS ports)
-######################################################################
+###############################################################################
 
 # Quad 129
 set_property PACKAGE_PIN N38 [get_ports {IPASS1_RX_P[0]}]
@@ -50,9 +50,9 @@ set_property PACKAGE_PIN E33 [get_ports {IPASS0_TX_P[3]}]
 set_property PACKAGE_PIN E34 [get_ports {IPASS0_TX_N[3]}]
 
 
-######################################################################
+###############################################################################
 # Pin constraints for PCIe-related signals
-######################################################################
+###############################################################################
 set_property PACKAGE_PIN F22  [get_ports {IPASS_SIDEBAND[0]}]
 set_property PACKAGE_PIN D20  [get_ports {IPASS_SIDEBAND[1]}]
 set_property PACKAGE_PIN AG14 [get_ports {PCIE_RESET}]
