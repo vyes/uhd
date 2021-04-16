@@ -66,8 +66,7 @@ architecture test of tb_x4xx is
       TRIG_IO            : inout std_logic;
       PL_CPLD_JTAGEN     : out std_logic;
       PL_CPLD_CS0_n      : out std_logic;
-      PL_CPLD_CS1_n      : out std_logic;
-      FPGA_TEST          : out std_logic);
+      PL_CPLD_CS1_n      : out std_logic);
   end component;
 
 begin
