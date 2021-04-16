@@ -1,4 +1,3 @@
-/////////////////////////////////////////////////////////////////////
 //
 // Copyright 2021 Ettus Research, A National Instruments Brand
 //
@@ -23,7 +22,7 @@
 //   RFNOC_PROTOVER : RFNoC protocol version (major[7:0], minor[7:0])
 //   RADIO_SPC      : Number of samples per radio clock cycle
 //
-/////////////////////////////////////////////////////////////////////
+
 
 module x4xx_core #(
   parameter NUM_DBOARDS    = 2,
@@ -32,7 +31,7 @@ module x4xx_core #(
   parameter CHDR_CLK_RATE  = 200000000,
   parameter NUM_CHANNELS   = 4,
   parameter CHDR_W         = 64,
-  parameter MTU            = $clog2(8192)-$clog2(CHDR_W/8),
+  parameter MTU            = $clog2(8192 / (CHDR_W/8)),
   parameter RFNOC_PROTOVER = {8'd1, 8'd0},
   parameter RADIO_SPC      = 1
 ) (
@@ -46,7 +45,7 @@ module x4xx_core #(
   input rfnoc_ctrl_clk,
   input rfnoc_ctrl_rst,
 
-  // AXI lite interface (for motherboard registers)
+  // AXI-Lite interface (for motherboard registers)
   input                     s_axi_aclk,
   input                     s_axi_aresetn,
   input  [  REG_AWIDTH-1:0] s_axi_awaddr,
@@ -160,10 +159,9 @@ module x4xx_core #(
   output wire adc_reset_pulse,
   output wire dac_reset_pulse,
 
-  // Versioning (Constant)
+  // Version (Constant)
   // Each component consists of a 96-bit vector (refer to versioning_utils.vh)
   input wire [64*96-1:0] version_info
-
 );
 
   //---------------------------------------------------------------------------
@@ -225,13 +223,14 @@ module x4xx_core #(
       .m_ctrlport_resp_status     (ctrlport_resp_status),        //in  wire[1:0]
       .m_ctrlport_resp_data       (ctrlport_resp_data));         //in  wire[31:0]
 
+
   //---------------------------------------------------------------------------
-  // Common components
+  // Common Components
   //---------------------------------------------------------------------------
 
   wire ctrlport_rst;
 
-  reset_sync reset_ctrlport (
+  reset_sync reset_sync_ctrlport (
     .clk       (s_axi_aclk),
     .reset_in  (~s_axi_aresetn),
     .reset_out (ctrlport_rst)
@@ -241,7 +240,7 @@ module x4xx_core #(
     .CHDR_CLK_RATE  (CHDR_CLK_RATE),
     .CHDR_W         (CHDR_W),
     .RFNOC_PROTOVER (RFNOC_PROTOVER),
-    .PCIE_PRESENT   (0) // PCI Express not present in open source FPGA images
+    .PCIE_PRESENT   (0)
   ) x4xx_core_common_i (
     .radio_clk                 (radio_clk),
     .radio_rst                 (radio_rst),
@@ -308,7 +307,7 @@ module x4xx_core #(
     .version_info              (version_info)
   );
 
-  // provide information for ctrlport timed commands
+  // Provide information for ctrlport timed commands
   assign radio_time_stb = rx_stb[0];
 
 
@@ -427,7 +426,7 @@ module x4xx_core #(
 
 
   //-------------------------------------------------------------------------
-  // RF Reset Control
+  // RF Timing Reset Control
   //-------------------------------------------------------------------------
 
   rfdc_timing_control #(
