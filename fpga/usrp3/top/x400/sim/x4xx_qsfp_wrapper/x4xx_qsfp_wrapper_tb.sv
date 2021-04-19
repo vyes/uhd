@@ -1,27 +1,33 @@
 //
-// Copyright 2020 Ettus Research, a National Instruments Brand
+// Copyright 2021 Ettus Research, a National Instruments Brand
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
 // Module: x4xx_qsfp_wrapper_tb
 //
-// Description:  Testbench for x4xx_qsfp_wrapper
+// Description:
+//
+//   Testbench for x4xx_qsfp_wrapper.
 //
 // Parameters:
-//   TEST_NAME - string added to test output
-//   PROTOCOL - Must be {100Gbe, 10GbE, 1GbE, Aurora, Disabled}
-//   USE_MAC - When set simulate through mac and phy. When clear cut in before mac
+//
+//   TEST_NAME : String added to test output
+//   PROTOCOL  : Must be {100Gbe, 10GbE, 1GbE, Aurora, Disabled}
+//   USE_MAC   : When set simulate through MAC and PHY. When false, cut before
+//               the MAC.
+//
 
 `include "./x4xx_mgt_types.vh"
 
+
 module x4xx_qsfp_wrapper_tb #(
-  parameter        TEST_NAME  = "x4xx_qsfp_wrapper_tb",
-  parameter        PROTOCOL0  = `MGT_10GbE,
-  parameter        PROTOCOL1  = `MGT_Disabled,
-  parameter        PROTOCOL2  = `MGT_Disabled,
-  parameter        PROTOCOL3  = `MGT_Disabled,
-  parameter        CHDR_W     = 64,
-  parameter logic  USE_MAC    = 1
+  parameter       TEST_NAME  = "x4xx_qsfp_wrapper_tb",
+  parameter       PROTOCOL0  = `MGT_10GbE,
+  parameter       PROTOCOL1  = `MGT_Disabled,
+  parameter       PROTOCOL2  = `MGT_Disabled,
+  parameter       PROTOCOL3  = `MGT_Disabled,
+  parameter       CHDR_W     = 64,
+  parameter logic USE_MAC    = 1
 ) (
   /* no IO */
 );
@@ -38,12 +44,12 @@ module x4xx_qsfp_wrapper_tb #(
   //---------------------------------------------------------------------------
   // Local Parameters
   //---------------------------------------------------------------------------
+
   localparam int CPU_W  = 64;
 
   localparam int ENET_W = PROTOCOL0 == `MGT_100GbE?512:64;
   // 10gbe Mac AUTOEXPANDS small packets > 64 bit
   localparam AUTOEXPAND_TO_64 = PROTOCOL0 == `MGT_100GbE?0:USE_MAC;
-
 
   localparam [7:0]  PORTNUM      = 0;
   localparam        MDIO_EN      = 0;
@@ -123,18 +129,15 @@ module x4xx_qsfp_wrapper_tb #(
   AxiLiteIf #(.DATA_WIDTH(32),.ADDR_WIDTH(40))
     s_axi (clk40, clk40_rst);
 
-
-
-
   // Bus functional model for a axi_stream controller
   AxiStreamBfm #(.DATA_WIDTH(ENET_W),.USER_WIDTH(ENET_USER_W)) eth [];
   AxiStreamBfm #(.DATA_WIDTH(CHDR_W),.USER_WIDTH(CHDR_USER_W),.TKEEP(0),.TUSER(0)) v [];
   AxiStreamBfm #(.DATA_WIDTH(CPU_W),.USER_WIDTH(CPU_USER_W),.TUSER(0)) cpu [];
   AxiLiteBfm #(.DATA_WIDTH(32),.ADDR_WIDTH(40)) axi = new(.master(s_axi));
 
-  //----------------------------------------------------
+  //---------------------------------------------------------------------------
   // Instantiate DUT
-  //----------------------------------------------------
+  //---------------------------------------------------------------------------
 
   logic [3:0] tx_p,tx_n,rx_p,rx_n;
   logic [3:0] [31:0] port_info;
@@ -220,44 +223,7 @@ module x4xx_qsfp_wrapper_tb #(
     .link_up         (link_up),
     .activity        (activity)
   );
-/*
-  `define MGT_IO dut.mgt_io_i
-  `define QSFP_W dut
-  x4xx_qsfp_wrapper #(
-    .PROTOCOL       (PROTOCOL),
-    .CPU_W          (CPU_W),
-    .CHDR_W         (CHDR_W),
-    .PORTNUM        (PORTNUM),
-    .MDIO_EN        (MDIO_EN),
-    .MDIO_PHYADDR   (MDIO_PHYADDR),
-    .RFNOC_PROTOVER (RFNOC_PROTOVER)
-  ) dut (
-    .areset          (refclk_rst),
-    .refclk_p        (refclk_p),
-    .refclk_n        (refclk_n),
-    .bus_rst         (clk200_rst),
-    .clk100          (clk100),             // IP configured for 100 MHz DClk
-    .bus_clk         (clk200),
 
-    .s_axi           (s_axi),
-
-    // qsfp_signals
-    .tx_p            (tx_p),
-    .tx_n            (tx_n),
-    .rx_p            (rx_p),
-    .rx_n            (rx_n),
-
-    .link_up         (link_up),            //vhook_warn TODO: Need to connect link signal to CPLD SPI interface
-    .activity        (activity),           //vhook_warn TODO: Need to connect activity signal to CPLD SPI interface
-
-    .e2v             (e2v),
-    .v2e             (v2e),
-    .e2c             (e2c),
-    .c2e             (c2e),
-    .device_id       (device_id),
-    .port_info       (port_info)
-  );
-*/
 
   //---------------------------------------------------------------------------
   // Connect to e2c c2e
@@ -332,7 +298,7 @@ module x4xx_qsfp_wrapper_tb #(
       c2e[3].tready = `QSFP_W.mgt_lanes.lane_loop[3].eth_port.c2e.tready;
     end
   end
-  
+
   //---------------------------------------------------------------------------
   // Connect to Internal Bus
   //---------------------------------------------------------------------------
@@ -453,17 +419,17 @@ module x4xx_qsfp_wrapper_tb #(
         always_comb begin
           force `MGT_IO0.mgt_clk = userclk;
           force `MGT_IO0.mgt_rst = userclk_rst;
-          eth_tx[0].tdata  = `MGT_IO0.core_10g.eth_10g_0.mgt_tx.tdata;
-          eth_tx[0].tuser  = `MGT_IO0.core_10g.eth_10g_0.mgt_tx.tuser;
-          eth_tx[0].tkeep  = `MGT_IO0.core_10g.eth_10g_0.mgt_tx.tkeep;
-          eth_tx[0].tlast  = `MGT_IO0.core_10g.eth_10g_0.mgt_tx.tlast;
-          eth_tx[0].tvalid = `MGT_IO0.core_10g.eth_10g_0.mgt_tx.tvalid;
-          force `MGT_IO0.core_10g.eth_10g_0.mgt_tx.tready = eth_tx[0].tready;
+          eth_tx[0].tdata  = `MGT_IO0.core_10g.eth_10g_i.mgt_tx.tdata;
+          eth_tx[0].tuser  = `MGT_IO0.core_10g.eth_10g_i.mgt_tx.tuser;
+          eth_tx[0].tkeep  = `MGT_IO0.core_10g.eth_10g_i.mgt_tx.tkeep;
+          eth_tx[0].tlast  = `MGT_IO0.core_10g.eth_10g_i.mgt_tx.tlast;
+          eth_tx[0].tvalid = `MGT_IO0.core_10g.eth_10g_i.mgt_tx.tvalid;
+          force `MGT_IO0.core_10g.eth_10g_i.mgt_tx.tready = eth_tx[0].tready;
 
-          force `MGT_IO0.core_10g.eth_10g_0.mgt_rx.tdata = eth_rx[0].tdata;
-          force `MGT_IO0.core_10g.eth_10g_0.mgt_rx.tuser = eth_rx[0].tuser;
-          force `MGT_IO0.core_10g.eth_10g_0.mgt_rx.tlast = eth_rx[0].tlast;
-          force `MGT_IO0.core_10g.eth_10g_0.mgt_rx.tvalid = eth_rx[0].tvalid;
+          force `MGT_IO0.core_10g.eth_10g_i.mgt_rx.tdata = eth_rx[0].tdata;
+          force `MGT_IO0.core_10g.eth_10g_i.mgt_rx.tuser = eth_rx[0].tuser;
+          force `MGT_IO0.core_10g.eth_10g_i.mgt_rx.tlast = eth_rx[0].tlast;
+          force `MGT_IO0.core_10g.eth_10g_i.mgt_rx.tvalid = eth_rx[0].tvalid;
           eth_rx[0].tready = 1;
         end
       end : skip_mac0_10
@@ -471,17 +437,17 @@ module x4xx_qsfp_wrapper_tb #(
         always_comb begin
           force `MGT_IO1.mgt_clk = userclk;
           force `MGT_IO1.mgt_rst = userclk_rst;
-          eth_tx[1].tdata  = `MGT_IO1.core_10g.eth_10g_0.mgt_tx.tdata;
-          eth_tx[1].tuser  = `MGT_IO1.core_10g.eth_10g_0.mgt_tx.tuser;
-          eth_tx[1].tkeep  = `MGT_IO1.core_10g.eth_10g_0.mgt_tx.tkeep;
-          eth_tx[1].tlast  = `MGT_IO1.core_10g.eth_10g_0.mgt_tx.tlast;
-          eth_tx[1].tvalid = `MGT_IO1.core_10g.eth_10g_0.mgt_tx.tvalid;
-          force `MGT_IO1.core_10g.eth_10g_0.mgt_tx.tready = eth_tx[1].tready;
+          eth_tx[1].tdata  = `MGT_IO1.core_10g.eth_10g_i.mgt_tx.tdata;
+          eth_tx[1].tuser  = `MGT_IO1.core_10g.eth_10g_i.mgt_tx.tuser;
+          eth_tx[1].tkeep  = `MGT_IO1.core_10g.eth_10g_i.mgt_tx.tkeep;
+          eth_tx[1].tlast  = `MGT_IO1.core_10g.eth_10g_i.mgt_tx.tlast;
+          eth_tx[1].tvalid = `MGT_IO1.core_10g.eth_10g_i.mgt_tx.tvalid;
+          force `MGT_IO1.core_10g.eth_10g_i.mgt_tx.tready = eth_tx[1].tready;
 
-          force `MGT_IO1.core_10g.eth_10g_0.mgt_rx.tdata = eth_rx[1].tdata;
-          force `MGT_IO1.core_10g.eth_10g_0.mgt_rx.tuser = eth_rx[1].tuser;
-          force `MGT_IO1.core_10g.eth_10g_0.mgt_rx.tlast = eth_rx[1].tlast;
-          force `MGT_IO1.core_10g.eth_10g_0.mgt_rx.tvalid = eth_rx[1].tvalid;
+          force `MGT_IO1.core_10g.eth_10g_i.mgt_rx.tdata = eth_rx[1].tdata;
+          force `MGT_IO1.core_10g.eth_10g_i.mgt_rx.tuser = eth_rx[1].tuser;
+          force `MGT_IO1.core_10g.eth_10g_i.mgt_rx.tlast = eth_rx[1].tlast;
+          force `MGT_IO1.core_10g.eth_10g_i.mgt_rx.tvalid = eth_rx[1].tvalid;
           eth_rx[1].tready = 1;
         end
       end : skip_mac1_10
@@ -489,17 +455,17 @@ module x4xx_qsfp_wrapper_tb #(
         always_comb begin
           force `MGT_IO2.mgt_clk = userclk;
           force `MGT_IO2.mgt_rst = userclk_rst;
-          eth_tx[2].tdata  = `MGT_IO2.core_10g.eth_10g_0.mgt_tx.tdata;
-          eth_tx[2].tuser  = `MGT_IO2.core_10g.eth_10g_0.mgt_tx.tuser;
-          eth_tx[2].tkeep  = `MGT_IO2.core_10g.eth_10g_0.mgt_tx.tkeep;
-          eth_tx[2].tlast  = `MGT_IO2.core_10g.eth_10g_0.mgt_tx.tlast;
-          eth_tx[2].tvalid = `MGT_IO2.core_10g.eth_10g_0.mgt_tx.tvalid;
-          force `MGT_IO2.core_10g.eth_10g_0.mgt_tx.tready = eth_tx[2].tready;
+          eth_tx[2].tdata  = `MGT_IO2.core_10g.eth_10g_i.mgt_tx.tdata;
+          eth_tx[2].tuser  = `MGT_IO2.core_10g.eth_10g_i.mgt_tx.tuser;
+          eth_tx[2].tkeep  = `MGT_IO2.core_10g.eth_10g_i.mgt_tx.tkeep;
+          eth_tx[2].tlast  = `MGT_IO2.core_10g.eth_10g_i.mgt_tx.tlast;
+          eth_tx[2].tvalid = `MGT_IO2.core_10g.eth_10g_i.mgt_tx.tvalid;
+          force `MGT_IO2.core_10g.eth_10g_i.mgt_tx.tready = eth_tx[2].tready;
 
-          force `MGT_IO2.core_10g.eth_10g_0.mgt_rx.tdata = eth_rx[2].tdata;
-          force `MGT_IO2.core_10g.eth_10g_0.mgt_rx.tuser = eth_rx[2].tuser;
-          force `MGT_IO2.core_10g.eth_10g_0.mgt_rx.tlast = eth_rx[2].tlast;
-          force `MGT_IO2.core_10g.eth_10g_0.mgt_rx.tvalid = eth_rx[2].tvalid;
+          force `MGT_IO2.core_10g.eth_10g_i.mgt_rx.tdata = eth_rx[2].tdata;
+          force `MGT_IO2.core_10g.eth_10g_i.mgt_rx.tuser = eth_rx[2].tuser;
+          force `MGT_IO2.core_10g.eth_10g_i.mgt_rx.tlast = eth_rx[2].tlast;
+          force `MGT_IO2.core_10g.eth_10g_i.mgt_rx.tvalid = eth_rx[2].tvalid;
           eth_rx[2].tready = 1;
         end
       end : skip_mac2_10
@@ -507,22 +473,23 @@ module x4xx_qsfp_wrapper_tb #(
         always_comb begin
           force `MGT_IO3.mgt_clk = userclk;
           force `MGT_IO3.mgt_rst = userclk_rst;
-          eth_tx[3].tdata  = `MGT_IO3.core_10g.eth_10g_0.mgt_tx.tdata;
-          eth_tx[3].tuser  = `MGT_IO3.core_10g.eth_10g_0.mgt_tx.tuser;
-          eth_tx[3].tkeep  = `MGT_IO3.core_10g.eth_10g_0.mgt_tx.tkeep;
-          eth_tx[3].tlast  = `MGT_IO3.core_10g.eth_10g_0.mgt_tx.tlast;
-          eth_tx[3].tvalid = `MGT_IO3.core_10g.eth_10g_0.mgt_tx.tvalid;
-          force `MGT_IO3.core_10g.eth_10g_0.mgt_tx.tready = eth_tx[3].tready;
+          eth_tx[3].tdata  = `MGT_IO3.core_10g.eth_10g_i.mgt_tx.tdata;
+          eth_tx[3].tuser  = `MGT_IO3.core_10g.eth_10g_i.mgt_tx.tuser;
+          eth_tx[3].tkeep  = `MGT_IO3.core_10g.eth_10g_i.mgt_tx.tkeep;
+          eth_tx[3].tlast  = `MGT_IO3.core_10g.eth_10g_i.mgt_tx.tlast;
+          eth_tx[3].tvalid = `MGT_IO3.core_10g.eth_10g_i.mgt_tx.tvalid;
+          force `MGT_IO3.core_10g.eth_10g_i.mgt_tx.tready = eth_tx[3].tready;
 
-          force `MGT_IO3.core_10g.eth_10g_0.mgt_rx.tdata = eth_rx[3].tdata;
-          force `MGT_IO3.core_10g.eth_10g_0.mgt_rx.tuser = eth_rx[3].tuser;
-          force `MGT_IO3.core_10g.eth_10g_0.mgt_rx.tlast = eth_rx[3].tlast;
-          force `MGT_IO3.core_10g.eth_10g_0.mgt_rx.tvalid = eth_rx[3].tvalid;
+          force `MGT_IO3.core_10g.eth_10g_i.mgt_rx.tdata = eth_rx[3].tdata;
+          force `MGT_IO3.core_10g.eth_10g_i.mgt_rx.tuser = eth_rx[3].tuser;
+          force `MGT_IO3.core_10g.eth_10g_i.mgt_rx.tlast = eth_rx[3].tlast;
+          force `MGT_IO3.core_10g.eth_10g_i.mgt_rx.tvalid = eth_rx[3].tvalid;
           eth_rx[3].tready = 1;
         end
       end : skip_mac3_10
     end : skip_mac_single_lane
   end
+
   //---------------------------------------------------------------------------
   // Reset
   //---------------------------------------------------------------------------
@@ -535,11 +502,13 @@ module x4xx_qsfp_wrapper_tb #(
   //---------------------------------------------------------------------------
   // Test Registers
   //---------------------------------------------------------------------------
+
   // register offset for DMA controller
   localparam REG_DMA                  = 'h0;
   localparam MM2S_DMACR               = REG_DMA + 'h0;
+
   // register offsets from x4xx_mgt_io_core
-  // MGT_IO Regsiters (NI_XGE registers)
+  // MGT_IO Registers (NI_XGE registers)
   localparam REG_BASE_SFP_IO          = 32'h8000;
   localparam REG_PORT_INFO            = REG_BASE_SFP_IO + 'h0;
   localparam REG_MAC_CTRL_STATUS      = REG_BASE_SFP_IO + 'h4;
@@ -548,16 +517,17 @@ module x4xx_qsfp_wrapper_tb #(
 
   // Ethernet specific
   localparam REG_ETH_MDIO_BASE        = REG_BASE_SFP_IO + 'h10;
+
   // Aurora specific
   localparam REG_AURORA_OVERRUNS      = REG_BASE_SFP_IO + 'h20;
   localparam REG_CHECKSUM_ERRORS      = REG_BASE_SFP_IO + 'h24;
   localparam REG_BIST_CHECKER_SAMPS   = REG_BASE_SFP_IO + 'h28;
   localparam REG_BIST_CHECKER_ERRORS  = REG_BASE_SFP_IO + 'h2C;
 
-  // At 0x9000 The Opencores XGE MAC registers exist.
+  // At 0x9000 The OpenCores XGE MAC registers exist.
 
-  // Set BASE for UIO - The packege file defines the registers at +0x1000
-  // NOTE that 0x9000/0x9004 has a local copy of the MAC REGISTER
+  // Set BASE for UIO - The package file defines the registers at +0x1000.
+  // NOTE that 0x9000/0x9004 has a local copy of the MAC REGISTER.
   localparam BASE                 = 32'h9000;
   localparam REG_AWIDTH = 16;
   `include "../../../../lib/rfnoc/xport_sv/eth_regs.vh"
@@ -974,6 +944,7 @@ module x4xx_qsfp_wrapper_tb #(
     test_c2e.end_test();
 
   endtask : test_cpueth_lane
+
   //---------------------------------------------------------------------------
   // Ethernet to CHDR test
   //---------------------------------------------------------------------------

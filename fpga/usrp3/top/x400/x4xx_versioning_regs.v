@@ -1,8 +1,7 @@
-/////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020 Ettus Research, A National Instruments Brand
+// Copyright 2021 Ettus Research, A National Instruments Brand
 //
-// SPDX-License-Identifier: LGPL-3.0
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 // Module: x4xx_versioning_regs
 //
@@ -42,7 +41,124 @@
 //   --- LV-specific components ---
 //   Reserved space for up to 20 components.
 //
-/////////////////////////////////////////////////////////////////////
+// Parameters:
+//
+//   REG_BASE : Base address to use for registers.
+//
+
+`default_nettype none
+
+
+module x4xx_versioning_regs #(
+  parameter REG_BASE = 0
+) (
+  // Slave ctrlport interface
+  input  wire        s_ctrlport_clk,
+  input  wire        s_ctrlport_rst,
+  input  wire        s_ctrlport_req_wr,
+  input  wire        s_ctrlport_req_rd,
+  input  wire [19:0] s_ctrlport_req_addr,
+  input  wire [31:0] s_ctrlport_req_data,
+  output reg         s_ctrlport_resp_ack     = 1'b0,
+  output reg  [ 1:0] s_ctrlport_resp_status,
+  output reg  [31:0] s_ctrlport_resp_data    = 32'h0,
+
+  // Version (Constant)
+  // Each component consists of a 96-bit vector (refer to versioning_utils.vh)
+  input wire [64*96-1:0] version_info
+);
+
+  `include "regmap/versioning_regs_regmap_utils.vh"
+  `include "regmap/versioning_utils.vh"
+  `include "../../lib/rfnoc/core/ctrlport.vh"
+
+  // 64 components * 4 registers * 4 addresses p/ register
+  localparam REG_SIZE = MAX_NUM_OF_COMPONENTS*4*4;
+
+  //--------------------------------------------------------------------
+  // Versioning Registers
+  // -------------------------------------------------------------------
+
+  // Check that address is within this module's range.
+  wire address_in_range = (s_ctrlport_req_addr >= REG_BASE) && (s_ctrlport_req_addr < REG_BASE + REG_SIZE);
+  // Mask out 6 bits (64 components) to be able to compare all components
+  // against the same base register address.
+  wire [31:0] register_base_address = {s_ctrlport_req_addr[19:10], 6'b0, s_ctrlport_req_addr[3:0]};
+  // Extract masked out bits from the address, which represent the
+  // component that is being addressed (0-63) = 6 bits.
+  wire [ 5:0] component_index = s_ctrlport_req_addr[9:4];
+
+  // Obtain the indexed component's versions
+  wire [COMPONENT_VERSIONS_SIZE-1:0] component_versions = get_component_versions(version_info, component_index);
+
+  // Registers implementation
+  always @ (posedge s_ctrlport_clk) begin
+    if (s_ctrlport_rst) begin
+      s_ctrlport_resp_ack    <= 1'b0;
+      s_ctrlport_resp_status <= CTRL_STS_OKAY;
+
+    end else begin
+      // Write registers
+      if (s_ctrlport_req_wr) begin
+        // Do not acknowledge by default
+        s_ctrlport_resp_ack  <= 1'b0;
+        s_ctrlport_resp_data <= 32'h0;
+
+        // No writable registers
+
+        // Acknowledge and provide error status if address is in range
+        if (address_in_range) begin
+          s_ctrlport_resp_ack    <= 1'b1;
+          s_ctrlport_resp_status <= CTRL_STS_CMDERR;
+        end
+
+      // Read registers
+      end else if (s_ctrlport_req_rd) begin
+        // Acknowledge by default
+        s_ctrlport_resp_ack    <= 1'b1;
+        s_ctrlport_resp_data   <= 32'h0;
+        s_ctrlport_resp_status <= CTRL_STS_OKAY;
+
+        case (register_base_address)
+
+          // Each concatenated 96-bit vector contains 3 x 32-bit values:
+          //   [31: 0] -> Current version
+          //   [63:32] -> Oldest compatible version
+          //   [95:64] -> Last modified
+
+          REG_BASE + CURRENT_VERSION(0): begin
+            s_ctrlport_resp_data[VERSION_TYPE_SIZE-1:0]   <= current_version(component_versions);
+          end
+          REG_BASE + OLDEST_COMPATIBLE_VERSION(0): begin
+            s_ctrlport_resp_data[VERSION_TYPE_SIZE-1:0]   <= oldest_compatible_version(component_versions);
+          end
+          REG_BASE + VERSION_LAST_MODIFIED(0): begin
+            s_ctrlport_resp_data[TIMESTAMP_TYPE_SIZE-1:0] <= version_last_modified(component_versions);
+          end
+
+          // Do not acknowledge if address is not defined
+          default: begin
+            if (address_in_range) begin
+              s_ctrlport_resp_status <= CTRL_STS_CMDERR;
+
+            // No response if out of range
+            end else begin
+              s_ctrlport_resp_ack <= 1'b0;
+            end
+          end
+        endcase
+
+      end else begin
+        s_ctrlport_resp_ack <= 1'b0;
+      end
+    end
+  end
+
+endmodule
+
+
+`default_nettype wire
+
 
 //XmlParse xml_on
 //<regmap name="VERSIONING_REGS_REGMAP" readablestrobes="false" generatevhdl="true" ettusguidelines="true">
@@ -148,111 +264,3 @@
 //  </group>
 //</regmap>
 //XmlParse xml_off
-
-module x4xx_versioning_regs #(
-  parameter REG_BASE        = 0 // Registers' base
-) (
-
-  // Slave ctrlport interface
-  input             s_ctrlport_clk,
-  input             s_ctrlport_rst,
-  input             s_ctrlport_req_wr,
-  input             s_ctrlport_req_rd,
-  input      [19:0] s_ctrlport_req_addr,
-  input      [31:0] s_ctrlport_req_data,
-  output reg        s_ctrlport_resp_ack = 1'b0,
-  output reg [ 1:0] s_ctrlport_resp_status,
-  output reg [31:0] s_ctrlport_resp_data = 32'h0,
-
-  // Versioning (Constant)
-  // Each component consists of a 96-bit vector (refer to versioning_utils.vh)
-  input wire [64*96-1:0] version_info
-);
-
-  `include "regmap/versioning_regs_regmap_utils.vh"
-  `include "regmap/versioning_utils.vh"
-  `include "../../lib/rfnoc/core/ctrlport.vh"
-
-  localparam REG_SIZE = MAX_NUM_OF_COMPONENTS*4*4; // 64 components * 4 registers * 4 addresses p/ register
-
-  //--------------------------------------------------------------------
-  // Versioning Registers
-  // -------------------------------------------------------------------
-
-  // Check that address is within this module's range.
-  wire address_in_range = (s_ctrlport_req_addr >= REG_BASE) && (s_ctrlport_req_addr < REG_BASE + REG_SIZE);
-  // Mask out 6 bits (64 components) to be able to compare all components
-  // against the same base register address.
-  wire [31:0] register_base_address = {s_ctrlport_req_addr[19:10], 6'b0, s_ctrlport_req_addr[3:0]};
-  // Extract masked out bits from the address, which represent the
-  // component that is being addressed (0-63) = 6 bits.
-  wire [ 5:0] component_index = s_ctrlport_req_addr[9:4];
-
-  // Obtain the indexed component's versions
-  wire [COMPONENT_VERSIONS_SIZE-1:0] component_versions = get_component_versions(version_info, component_index);
-
-  // Registers implementation
-  always @ (posedge s_ctrlport_clk) begin
-    if (s_ctrlport_rst) begin
-      s_ctrlport_resp_ack    <= 1'b0;
-      s_ctrlport_resp_status <= CTRL_STS_OKAY;
-
-    end else begin
-      // Write registers
-      if (s_ctrlport_req_wr) begin
-        // Do not acknowledge by default
-        s_ctrlport_resp_ack  <= 1'b0;
-        s_ctrlport_resp_data <= 32'h0;
-
-        // No writable registers
-        //vhook_nowarn s_ctrlport_req_data
-
-        // Acknowledge and provide error status if address is in range
-        if (address_in_range) begin
-          s_ctrlport_resp_ack    <= 1'b1;
-          s_ctrlport_resp_status <= CTRL_STS_CMDERR;
-        end
-
-      // Read registers
-      end else if (s_ctrlport_req_rd) begin
-        // Acknowledge by default
-        s_ctrlport_resp_ack    <= 1'b1;
-        s_ctrlport_resp_data   <= 32'h0;
-        s_ctrlport_resp_status <= CTRL_STS_OKAY;
-
-        case (register_base_address)
-
-          // Each concatenated 96-bit vector contains 3 x 32-bit values:
-          //   [31: 0] -> Current version
-          //   [63:32] -> Oldest compatible version
-          //   [95:64] -> Last modified
-
-          REG_BASE + CURRENT_VERSION(0): begin
-            s_ctrlport_resp_data[VERSION_TYPE_SIZE-1:0]   <= current_version(component_versions);
-          end
-          REG_BASE + OLDEST_COMPATIBLE_VERSION(0): begin
-            s_ctrlport_resp_data[VERSION_TYPE_SIZE-1:0]   <= oldest_compatible_version(component_versions);
-          end
-          REG_BASE + VERSION_LAST_MODIFIED(0): begin
-            s_ctrlport_resp_data[TIMESTAMP_TYPE_SIZE-1:0] <= version_last_modified(component_versions);
-          end
-
-          // Do not acknowledge if address is not defined
-          default: begin
-            if (address_in_range) begin
-              s_ctrlport_resp_status <= CTRL_STS_CMDERR;
-
-            // no response if out of range
-            end else begin
-              s_ctrlport_resp_ack <= 1'b0;
-            end
-          end
-        endcase
-
-      end else begin
-        s_ctrlport_resp_ack <= 1'b0;
-      end
-    end
-  end
-
-endmodule
