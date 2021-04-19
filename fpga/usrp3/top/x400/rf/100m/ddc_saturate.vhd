@@ -1,30 +1,29 @@
----------------------------------------------------------------------
 --
--- Copyright 2019 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: ddc_saturate.vhd
+-- Module: ddc_saturate
 --
--- Purpose:
+-- Description:
 --
--- Saturation logic for reducing 2x24 bit words to 2x16 bit words. See
--- comments below for full description.
+--   Saturation logic for reducing 2x24 bit words to 2x16 bit words. See
+--   comments below for full description.
 --
-----------------------------------------------------------------------
 
-library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
 
 entity ddc_saturate is
   port(
-    Clk              : in std_logic;
-    cDataIn          : in std_logic_vector(47 downto 0); -- [Q,I] (I in LSBs)
-    cDataValidIn     : in std_logic;
-    cDataOut         : out std_logic_vector(31 downto 0); -- [Q,I] (I in LSBs)
-    cDataValidOut    : out std_logic );
+    Clk           : in  std_logic;
+    cDataIn       : in  std_logic_vector(47 downto 0); -- [Q,I] (I in LSBs)
+    cDataValidIn  : in  std_logic;
+    cDataOut      : out std_logic_vector(31 downto 0); -- [Q,I] (I in LSBs)
+    cDataValidOut : out std_logic
+  );
 end ddc_saturate;
-
 
 architecture RTL of ddc_saturate is
 
@@ -34,7 +33,7 @@ architecture RTL of ddc_saturate is
 begin
 
 
-  -- --------------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   -- Saturation
   --
   -- The output of the Xilinx FIR Compiler has already been rounded on the LSB
@@ -50,7 +49,7 @@ begin
   -- If 2 MSBs = 01, output <= 0.111111111111111, e.g. positive number >= 1
   -- If 2 MSBs = 10, output <= 1.000000000000000, e.g. negative number < -1
   -- If 2 MSBs = 11, output <= input without MSB, e.g. negative number >= -1
-  -- --------------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   Saturation:
   process(Clk)
   begin

@@ -1,36 +1,34 @@
----------------------------------------------------------------------
 --
--- Copyright 2019 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: ddc_400m_saturate.vhd
+-- Module: ddc_400m_saturate
 --
--- Purpose:
+-- Description:
 --
--- Saturation logic for reducing 2x24 bit words to 2x16 bit words. See
--- comments below for full description.
+--   Saturation logic for reducing 2x24 bit words to 2x16 bit words. See
+--   comments below for full description.
 --
-----------------------------------------------------------------------
 
-library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
 
 library work;
   use work.PkgRf.all;
 
 entity ddc_400m_saturate is
   port(
-    Clk              : in std_logic;
+    Clk           : in  std_logic;
     -- This data is from the DDC with a sample width of 17 bits and 7 bits of
     -- padding. Data format is, [Q3,I3, ... , Q0,I0] (I in LSBs)
-    cDataIn          : in std_logic_vector(191 downto 0);
-    cDataValidIn     : in std_logic;
+    cDataIn       : in  std_logic_vector(191 downto 0);
+    cDataValidIn  : in  std_logic;
     -- 16 bits saturated data. Data format is [Q3,I3, ... , Q0,I0] (I in LSBs)
-    cDataOut         : out std_logic_vector(127 downto 0);
-    cDataValidOut    : out std_logic );
+    cDataOut      : out std_logic_vector(127 downto 0);
+    cDataValidOut : out std_logic );
 end ddc_400m_saturate;
-
 
 architecture RTL of ddc_400m_saturate is
 
@@ -39,7 +37,7 @@ architecture RTL of ddc_400m_saturate is
 
 begin
 
-  -- --------------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   -- Saturation
   --
   -- The output of the Xilinx FIR Compiler has already been rounded on the LSB
@@ -55,10 +53,10 @@ begin
   -- If 2 MSBs = 01, output <= 0.111111111111111, e.g. positive number >= 1
   -- If 2 MSBs = 10, output <= 1.000000000000000, e.g. negative number < -1
   -- If 2 MSBs = 11, output <= input without MSB, e.g. negative number >= -1
-  -- --------------------------------------------------------------------------
+  -----------------------------------------------------------------------------
 
-  -- Logic to saturate input data to 16-bit signed value. Information on DDC data packer is in
-  -- PkgRf.vhd.
+  -- Logic to saturate input data to 16-bit signed value. Information on DDC
+  -- data packer is in PkgRf.vhd.
   cDataInSamples <= to_Samples17(cDataIn);
   GenSat: for i in cDataOutSamples'range generate
     Saturation:
@@ -73,7 +71,7 @@ begin
   DValidPipeline: process(Clk)
   begin
     if rising_edge(Clk) then
-      -- Pipeline data valid to match the data
+      -- Pipeline data valid to match the data.
       cDataValidOut <= cDataValidIn;
     end if;
   end process;

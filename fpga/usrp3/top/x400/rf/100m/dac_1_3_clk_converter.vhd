@@ -1,45 +1,43 @@
----------------------------------------------------------------------
 --
--- Copyright 2020 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: dac_1_3_clk_converter.vhd
+-- Module: dac_1_3_clk_converter
 --
--- Purpose:
+-- Description:
 --
--- This module transfers data from s_axis_aclk to m_axis_aclk. m_axis_aclk must
--- be three times the frequency of s_axis_aclk, and the two clocks must be
--- related (this module requires timing closure across the clock domain
--- boundary).
+--   This module transfers data from s_axis_aclk to m_axis_aclk. m_axis_aclk
+--   must be three times the frequency of s_axis_aclk, and the two clocks must
+--   be related (this module requires timing closure across the clock domain
+--   boundary).
 --
-----------------------------------------------------------------------
 
 library IEEE;
   use IEEE.std_logic_1164.all;
 
 entity dac_1_3_clk_converter is
   port(
-    s_axis_aclk : in std_logic;
-    s_axis_aresetn : in std_logic;
-    s_axis_tvalid : in std_logic;
-    s_axis_tdata : in std_logic_vector(31 downto 0);
-    s_axis_tready : out std_logic := '1';
+    s_axis_aclk    : in  std_logic;
+    s_axis_aresetn : in  std_logic;
+    s_axis_tvalid  : in  std_logic;
+    s_axis_tdata   : in  std_logic_vector(31 downto 0);
+    s_axis_tready  : out std_logic := '1';
 
-    m_axis_aclk : in std_logic;
-    m_axis_aresetn : in std_logic;
-    m_axis_tready : in std_logic;
-    m_axis_tdata : out std_logic_vector(31 downto 0);
-    m_axis_tvalid : out std_logic
+    m_axis_aclk    : in  std_logic;
+    m_axis_aresetn : in  std_logic;
+    m_axis_tready  : in  std_logic;
+    m_axis_tdata   : out std_logic_vector(31 downto 0);
+    m_axis_tvalid  : out std_logic
   );
 end entity dac_1_3_clk_converter;
 
 architecture RTL of dac_1_3_clk_converter is
 
-  --vhook_nowarn m_axis_tready
   -- I was unable to think of a simple implementation that implements a correct
-  -- AXIS handshake on both ports. All my ideas became equivalent to a two clock
-  -- FIFO (although the clocks are synchronous, so the write-to-read latency
-  -- would have been certain).
+  -- AXIS handshake on both ports. All my ideas became equivalent to a two
+  -- clock FIFO (although the clocks are synchronous, so the write-to-read
+  -- latency would have been certain).
   --
   -- We don't expect the DAC to ever hold off incoming data, and dac_100m_bd
   -- already has the AXIS handshake disconnected: the FIR is configured to
@@ -57,7 +55,7 @@ architecture RTL of dac_1_3_clk_converter is
     -- valid signal (remember the output clock is 3x the frequency of the input
     -- clock)
     recovery
-    );
+  );
 
   subtype word is std_logic_vector(s_axis_tdata'range);
   signal output_state_mclk : output_fsm;
@@ -119,7 +117,7 @@ begin
     end if;
   end process output_data_register;
 
-  fsm: Process(m_axis_aresetn, m_axis_aclk) is
+  fsm: process(m_axis_aresetn, m_axis_aclk) is
   begin
     if m_axis_aresetn='0' then
       output_state_mclk <= idle;

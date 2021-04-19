@@ -13,6 +13,7 @@
 //   filters.
 //
 
+`default_nettype none
 
 module rf_core_200m (
 
@@ -34,7 +35,7 @@ module rf_core_200m (
   //---------------------------------------------------------------------------
   // RFDC Data Interfaces
   //---------------------------------------------------------------------------
-  // All ports here are in the rfdc_clk domain
+  // All ports here are in the rfdc_clk domain.
 
   // ADC
   input  wire [127:0] adc_data_in_i_tdata_0,
@@ -61,7 +62,7 @@ module rf_core_200m (
   //---------------------------------------------------------------------------
   // User Data Interface
   //---------------------------------------------------------------------------
-  // All ports here are in the data_clk domain
+  // All ports here are in the data_clk domain.
 
   // ADC
   output wire [63:0] adc_data_out_tdata_0,  // Packed {Q1,I1,Q0,I0}
@@ -70,10 +71,10 @@ module rf_core_200m (
   output wire        adc_data_out_tvalid_1,
 
   // DAC
-  input  wire [63:0] dac_data_in_tdata_0,  // Packed {Q1,I1,Q0,I0} with Q in MSBs
+  input  wire [63:0] dac_data_in_tdata_0,   // Packed {Q1,I1,Q0,I0} with Q in MSBs
   output wire        dac_data_in_tready_0,
   input  wire        dac_data_in_tvalid_0,
-  input  wire [63:0] dac_data_in_tdata_1,  // Packed {Q1,I1,Q0,I0} with Q in MSBs
+  input  wire [63:0] dac_data_in_tdata_1,   // Packed {Q1,I1,Q0,I0} with Q in MSBs
   output wire        dac_data_in_tready_1,
   input  wire        dac_data_in_tvalid_1,
 
@@ -91,6 +92,7 @@ module rf_core_200m (
   output reg  [15:0] dsp_info_sclk,
   output wire [15:0] axi_status_sclk,
 
+  // Resets.
   input wire adc_data_out_resetn_dclk,
   input wire adc_enable_data_rclk,
   input wire adc_rfdc_axi_resetn_rclk,
@@ -104,7 +106,6 @@ module rf_core_200m (
 );
 
   `include "../../regmap/rfdc_regs_regmap_utils.vh"
-
 
   //---------------------------------------------------------------------------
   // 400 MHz RF Core
@@ -186,7 +187,7 @@ module rf_core_200m (
     .clk      (data_clk),
     .clk_2x   (data_clk_2x),
     .rst      (~adc_data_out_resetn_dclk),
-    .rst_2x   (~adc_data_out_resetn_dclk),     // 1x clk reset is safe to use
+    .rst_2x   (~adc_data_out_resetn_dclk), // 1x clk reset is safe to use
     .i_tdata  ({ adc_400m_tdata_1,  adc_400m_tdata_0 }),
     .i_tvalid ({ adc_400m_tvalid_1, adc_400m_tvalid_0 }),
     .o_tdata  ({ adc_data_out_tdata_1,  adc_data_out_tdata_0 }),
@@ -215,3 +216,5 @@ module rf_core_200m (
   );
 
 endmodule
+
+`default_nettype wire

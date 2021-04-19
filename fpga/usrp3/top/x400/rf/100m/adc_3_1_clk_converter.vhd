@@ -1,42 +1,41 @@
----------------------------------------------------------------------
 --
--- Copyright 2020 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: adc_3_1_clk_converter.vhd
+-- Module: adc_3_1_clk_converter
 --
--- Purpose:
+-- Description:
 --
--- This module transfers data from s_axis_aclk to m_axis_aclk. s_axis_aclk must
--- be three times the frequency of m_axis_aclk, and the two clocks must be
--- related (this module requires timing closure across the clock domain
--- boundary).
-----------------------------------------------------------------------
+--   This module transfers data from s_axis_aclk to m_axis_aclk. s_axis_aclk
+--   must be three times the frequency of m_axis_aclk, and the two clocks must
+--   be related (this module requires timing closure across the clock domain
+--   boundary).
+--
 
 library IEEE;
   use IEEE.std_logic_1164.all;
 
 entity adc_3_1_clk_converter is
   port(
-    s_axis_clk : in std_logic;
-    s_axis_resetn : in std_logic;
-    s_axis_tdata : in std_logic_vector(47 downto 0);
-    s_axis_tvalid : in std_logic;
+    s_axis_clk    : in  std_logic;
+    s_axis_resetn : in  std_logic;
+    s_axis_tdata  : in  std_logic_vector(47 downto 0);
+    s_axis_tvalid : in  std_logic;
 
-    m_axis_clk : in std_logic;
-    m_axis_resetn : in std_logic;
+    m_axis_clk    : in  std_logic;
+    m_axis_resetn : in  std_logic;
     m_axis_tvalid : out std_logic;
-    m_axis_tdata : out std_logic_vector(47 downto 0)
-    );
+    m_axis_tdata  : out std_logic_vector(47 downto 0)
+  );
 end entity;
 
 architecture RTL of adc_3_1_clk_converter is
 
-  -- To keep the implementation simple, this module does not implement a correct
-  -- AXIS handshake - it ignores m_axis_tready. adc_100m_bd already had an
-  -- assumption that the AXIS handshake is unneeded: ddc_saturate does not
+  -- To keep the implementation simple, this module does not implement a
+  -- correct AXIS handshake - it ignores m_axis_tready. adc_100m_bd already had
+  -- an assumption that the AXIS handshake is unneeded: ddc_saturate does not
   -- accept _tready from the following component.
-
   subtype Word_t is std_logic_vector(s_axis_tdata'range);
   signal s_axis_tvalid_pipe : std_logic_vector(2 downto 0);
   signal s_axis_tdata_reg : Word_t;
@@ -45,14 +44,14 @@ architecture RTL of adc_3_1_clk_converter is
   -- will not produce any metastability because the input clocks must be
   -- synchronous.
   --
-  -- These signals must be driven by registers not to prevent glitches (as in an
-  -- asynchronous CDC), but to improve timing closure.
+  -- These signals must be driven by registers not to prevent glitches (as in
+  -- an asynchronous CDC), but to improve timing closure.
   signal s_axis_tvalid_CDC : std_logic;
   signal s_axis_tdata_CDC : Word_t;
 
   -- m_axis_clk and s_axis_clk are nominally aligned by their rising edges.
-  -- Because m_axis_clk is more heavily loaded than s_axis_clk, m_axis_clk has a
-  -- larger distribution delay, which causes a large hold violation using
+  -- Because m_axis_clk is more heavily loaded than s_axis_clk, m_axis_clk has
+  -- a larger distribution delay, which causes a large hold violation using
   -- post-place timing estimates. The Ultrafast method (UG 949) recommends
   -- addressing such hold violations when WHS < -0.5 ns. By resampling on the
   -- falling edge of the destination clock, we get nominally half a period of
@@ -65,9 +64,9 @@ begin
 
   -- In the source clock domain, we capture incoming valid data and keep a
   -- history of _tvalid over the last three clock cycles. If s_axis_tvalid has
-  -- been asserted once in the last three clock cycles, assert s_axis_tvalid_CDC
-  -- to be sampled in the output clock domain. The length of s_axis_tvalid_pipe
-  -- must match the ratio of the clock frequencies (3:1).
+  -- been asserted once in the last three clock cycles, assert
+  -- s_axis_tvalid_CDC to be sampled in the output clock domain. The length of
+  -- s_axis_tvalid_pipe must match the ratio of the clock frequencies (3:1).
   InputSampling:
   process (s_axis_clk) is
   begin

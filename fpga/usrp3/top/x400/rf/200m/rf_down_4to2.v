@@ -17,6 +17,7 @@
 //     Clock Rate :     1x          2x         2x          1x
 //
 
+`default_nettype none
 
 module rf_down_4to2 #(
   parameter NUM_CHANNELS = 1
@@ -144,3 +145,5 @@ module rf_down_4to2 #(
   endgenerate
 
 endmodule
+
+`default_nettype wire

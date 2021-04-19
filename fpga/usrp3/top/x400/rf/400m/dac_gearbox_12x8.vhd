@@ -1,44 +1,44 @@
----------------------------------------------------------------------
 --
--- Copyright 2019 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: dac_gearbox_12x8.vhd
+-- Module: dac_gearbox_12x8
 --
--- Purpose:
+-- Description:
 --
--- Gearbox to expand the datawidth from 12 SPC to 8 SPC.
--- Input Clocks, all aligned to one another and coming from same MMCM
---   PLL reference clock = 61.44 or 62.5 MHz.
---   RfClk:       184.32 or 187.5 MHz (3x PLL reference clock)
---   Clk1x:       122.88 or 125 MHz (2x PLL reference clock)
---   Clk2x:       245.76 or 250 MHz (4x PLL reference clock)
+--   Gearbox to expand the data width from 12 SPC to 8 SPC.
+--   Input Clocks, all aligned to one another and coming from same MMCM.
+--     PLL reference clock = 61.44 or 62.5 MHz.
+--     RfClk: 184.32 or 187.5 MHz (3x PLL reference clock)
+--     Clk1x: 122.88 or 125 MHz (2x PLL reference clock)
+--     Clk2x: 245.76 or 250 MHz (4x PLL reference clock)
 --
-----------------------------------------------------------------------
 
-library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
 
 entity dac_gearbox_12x8 is
   port(
-    Clk1x            : in std_logic;
-    RfClk            : in std_logic;
-    ac1Reset_n       : in std_logic;
-    arReset_n        : in std_logic;
+    Clk1x            : in  std_logic;
+    RfClk            : in  std_logic;
+    ac1Reset_n       : in  std_logic;
+    arReset_n        : in  std_logic;
     -- Data packing: [Q11,I11,Q10,I10,...,Q3,I3,Q2,I2,Q1,I1,Q0,I0] (I in LSBs)
-    c1DataIn         : in std_logic_vector(383 downto 0); 
-    c1DataValidIn    : in std_logic;
-    -- Data packing: [Q7,I7,Q6,I6, ... ,Q3,I3,Q2,I2,Q1,I1,Q0,I0] (I in LSBs)
-    rDataOut         : out std_logic_vector(255 downto 0) := (others => '0'); 
+    c1DataIn         : in  std_logic_vector(383 downto 0);
+    c1DataValidIn    : in  std_logic;
+    -- Data packing: [Q7,I7,Q6,I6,...,Q3,I3,Q2,I2,Q1,I1,Q0,I0] (I in LSBs)
+    rDataOut         : out std_logic_vector(255 downto 0) := (others => '0');
     rReadyForOutput  : in  std_logic;
-    rDataValidOut    : out std_logic );
+    rDataValidOut    : out std_logic
+  );
 end dac_gearbox_12x8;
 
 architecture RTL of dac_gearbox_12x8 is
 
   constant kDataWidth   : natural := 16;
-  
+
   constant kDataI0Lsb : natural := 0;
   constant kDataI0Msb : natural := kDataWidth-1;
   constant kDataQ0Lsb : natural := kDataI0Msb+1;
@@ -71,7 +71,7 @@ architecture RTL of dac_gearbox_12x8 is
   constant kDataI7Msb : natural := kDataI7Lsb+kDataWidth-1;
   constant kDataQ7Lsb : natural := kDataI7Msb+1;
   constant kDataQ7Msb : natural := kDataQ7Lsb+kDataWidth-1;
-  
+
   subtype Word_t is std_logic_vector(383 downto 0);
   type Words_t is array(natural range<>) of Word_t;
 
@@ -81,12 +81,12 @@ architecture RTL of dac_gearbox_12x8 is
 
   signal c1PhaseCount, c1DataValidInDly : std_logic := '0';
   signal rPhaseShiftReg : std_logic_vector(2 downto 0);
-     
+
 begin
 
-  -----------------------------------------------------------
-  -------------- Data packing 12 SPC to 8 SPC ---------------
-  -----------------------------------------------------------
+  -----------------------------------------------------------------------------
+  -- Data Packing 12 SPC to 8 SPC
+  -----------------------------------------------------------------------------
 
   Clk1xDataCount: process(ac1Reset_n, Clk1x)
   begin
@@ -97,7 +97,7 @@ begin
       c1DataValidInDly <= c1DataValidIn;
       c1PhaseCount <= (not c1PhaseCount) and (c1DataValidIn or c1DataValidInDly);
     end if;
-  end process;  
+  end process;
 
   DataClkCrossing: process(RfClk)
   begin
@@ -118,14 +118,14 @@ begin
     end if;
   end process;
 
-  -------------------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   --
   -- Timing diagram: Data valid is asserted when both clock are edge aligned.
-  -- 
+  --
   --                    |                       |                       |
-  --                    v <-Clocks edge aligned v                       v 
-  -- Clk1x       ¯¯\____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\___                 
-  --                                                    |     
+  --                    v <-Clocks edge aligned v                       v
+  -- Clk1x       ¯¯\____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\___
+  --                                                    |
   --                                                    v <- O/p data valid assertion
   -- RfClk       ¯¯¯\___/¯¯¯\___/¯¯¯\___/¯¯¯\___/¯¯¯\___/¯¯¯\___/¯¯¯\___/¯¯¯\___/¯
   --                                    |       |       |
@@ -150,18 +150,20 @@ begin
   --
   -- rDValidDly2 __________________________________/¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
   --
-  -- In this design use a single bit counter on the input clock (Clk1x) domain and pass it to the
-  -- RfClk domain. When data valid is asserted when both clocks are rising edge aligned, only one 
-  -- bit in rPhaseSR high, the remaining bits are zero. We use the position of the bit counter
-  -- in the shift register to do data packing. 
+  -- In this design use a single bit counter on the input clock (Clk1x) domain
+  -- and pass it to the RfClk domain. When data valid is asserted when both
+  -- clocks are rising edge aligned, only one bit in rPhaseSR high, the
+  -- remaining bits are zero. We use the position of the bit counter in the
+  -- shift register to do data packing.
   --
   --
-  -- Timing digaram: When data valid is asserted when both clock are NOT edge aligned.
-  -- 
+  -- Timing diagram: When data valid is asserted when both clock are NOT edge
+  -- aligned.
+  --
   --                    |                       |                       |
-  --                    v <-Clocks edge algined v                       v 
-  -- Clk1x       ¯¯\____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\___                 
-  --                                                    |     
+  --                    v <-Clocks edge aligned v                       v
+  -- Clk1x       ¯¯\____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\_____/¯¯¯¯¯\___
+  --                                                    |
   --                                                    v <- O/p data valid assertion
   -- RfClk       ¯¯¯\___/¯¯¯\___/¯¯¯\___/¯¯¯\___/¯¯¯\___/¯¯¯\___/¯¯¯\___/¯¯¯\___/¯
   --                                            |       |       |       |
@@ -172,38 +174,38 @@ begin
   -- c1PhaseCount ___________________/¯¯¯¯¯¯¯¯¯¯|¯\_____|_____/¯|¯¯¯¯¯¯¯|¯¯\__________/¯¯
   --                                            |       |       |       |
   --                                            v <- rPhaseSR= "001"    |
-  -- rPhaseSR(0)         ________________/¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯\_____|_/¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯           
-  --                                                    |       |       | 
+  -- rPhaseSR(0)         ________________/¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯\_____|_/¯¯¯¯¯|¯¯¯¯¯¯¯¯¯¯
+  --                                                    |       |       |
   --                                                    v <- rPhaseSR= "011"
-  -- rPhaseSR(1)                 ________________/¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯\_____|_/¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯   
-  --                                                            |       | 
+  -- rPhaseSR(1)                 ________________/¯¯¯¯¯¯¯¯¯¯¯¯¯¯|¯\_____|_/¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+  --                                                            |       |
   --                                                            v <- rPhaseSR= "110"
-  -- rPhaseSR(2)                          ________________/¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯\_______/¯¯¯¯¯¯¯¯¯¯    
-  --                                                                    ^ 
+  -- rPhaseSR(2)                          ________________/¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯\_______/¯¯¯¯¯¯¯¯¯¯
+  --                                                                    ^
   --                                                                    | <- rPhaseSR= "101"
   --
   -- rDValidDly0         _________________/¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
   --
   -- rDValidDly1          _________________________/¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
   --
-  -- The above timing diagram is when input data valid is asserted when both clocks rising
-  -- edges are not aligned. In this case the more than one bit in rPhaseSR is asserted which 
-  -- is unique to this case. As mentioned in the above case, we use rPhaseSR value to
-  -- determine data packing.
+  -- The above timing diagram is when input data valid is asserted when both
+  -- clocks rising edges are not aligned. In this case the more than one bit in
+  -- rPhaseSR is asserted which is unique to this case. As mentioned in the
+  -- above case, we use rPhaseSR value to determine data packing.
 
-  -- Output data packer
+  -- Output Data Packer
   DataOut: process(RfClk)
   begin
     if rising_edge(RfClk) then
       --  rPhaseShiftReg = "011"
-      rDataOut <= rDataInDly(2)(kDataQ7Msb downto kDataI0Lsb); 
-      if rPhaseShiftReg = "110" or rPhaseShiftReg = "100" then 
+      rDataOut <= rDataInDly(2)(kDataQ7Msb downto kDataI0Lsb);
+      if rPhaseShiftReg = "110" or rPhaseShiftReg = "100" then
         rDataOut <= rDataInDly(2)(kDataQ3Msb downto kDataI0Lsb) &
                     rDataInDly(3)(c1DataIn'length-1 downto kDataQ7Msb+1);
-      elsif rPhaseShiftReg = "101" or rPhaseShiftReg = "001" then 
-        rDataOut <= rDataInDly(3)(c1DataIn'length-1 downto kDataI4Lsb); 
+      elsif rPhaseShiftReg = "101" or rPhaseShiftReg = "001" then
+        rDataOut <= rDataInDly(3)(c1DataIn'length-1 downto kDataI4Lsb);
       elsif rPhaseShiftReg = "010" then
-        rDataOut <= rDataInDly(3)(kDataQ7Msb downto kDataI0Lsb); 
+        rDataOut <= rDataInDly(3)(kDataQ7Msb downto kDataI0Lsb);
       end if;
     end if;
   end process;
@@ -214,12 +216,10 @@ begin
       rDataValidDly  <= (others => '0');
       rDataValidOut  <= '0';
     elsif rising_edge(RfClk) then
-      rDataValidDly  <= rDataValidDly(rDataValidDly'left-1 downto 0) & 
+      rDataValidDly  <= rDataValidDly(rDataValidDly'left-1 downto 0) &
                         c1DataValidIn;
 
-      ---------------------------------------------------------------------
       -- Data valid out asserting based on phase alignment RfClk and Clk1x.
-      ---------------------------------------------------------------------
       -- When RfClk and Clk1x are not phase aligned.
       rDataValidOut  <= rDataValidDly(2) and rReadyForOutput;
 
@@ -229,6 +229,5 @@ begin
       end if;
     end if;
   end process;
-  
-end RTL;
 
+end RTL;
