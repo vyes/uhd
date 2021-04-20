@@ -26,6 +26,7 @@ set(USRP_MPM_PERIPHMGR_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/x4xx_update_cpld.py
     ${CMAKE_CURRENT_SOURCE_DIR}/x4xx_gps_mgr.py
     ${CMAKE_CURRENT_SOURCE_DIR}/x4xx_mb_cpld.py
+    ${CMAKE_CURRENT_SOURCE_DIR}/x4xx_rfdc_regs.py
     ${CMAKE_CURRENT_SOURCE_DIR}/sim.py
     )
 list(APPEND USRP_MPM_FILES ${USRP_MPM_PERIPHMGR_FILES})
