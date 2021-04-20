@@ -88,7 +88,7 @@ begin
 
   --vhook_e rf_nco_reset DUT
   --vhook_# Both cNcoPhaseRst and cNcoUpdateEn are constants in the DUT.
-  DUT: entity work.rf_nco_reset (rtl)
+  DUT: entity work.rf_nco_reset (RTL)
     port map (
       ConfigClk               => ConfigClk,                --in  std_logic
       DataClk                 => DataClk,                  --in  std_logic

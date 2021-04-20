@@ -1,40 +1,38 @@
----------------------------------------------------------------------
 --
--- Copyright 2021 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: rf_reset.vhd
+-- Module: rf_reset
 --
--- Purpose:
+-- Description:
 --
--- Control RFDC, ADC, and DAC resets.
+--   Control RFDC, ADC, and DAC resets.
 --
-----------------------------------------------------------------------
 
-library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
 
 entity rf_reset is
   port(
     -- Clocks used in the data path.
-    DataClk      : in std_logic;
-    PllRefClk    : in std_logic;
-    RfClk        : in std_logic;
-    RfClk2x      : in std_logic;
-    DataClk2x    : in std_logic;
+    DataClk     : in std_logic;
+    PllRefClk   : in std_logic;
+    RfClk       : in std_logic;
+    RfClk2x     : in std_logic;
+    DataClk2x   : in std_logic;
 
-    -- Master resets from the Radio
-    dTimedReset  : in std_logic;
-    dSwReset     : in std_logic;
+    -- Master resets from the Radio.
+    dTimedReset : in std_logic;
+    dSwReset    : in std_logic;
 
-    -- Resets outputs
-    dReset_n     : out std_logic := '0';
-    d2Reset_n    : out std_logic := '0';
-    r2Reset_n    : out std_logic := '0';
-    rAxiReset_n  : out std_logic := '0';
-    rReset_n     : out std_logic := '0'
-
+    -- Resets outputs.
+    dReset_n    : out std_logic := '0';
+    d2Reset_n   : out std_logic := '0';
+    r2Reset_n   : out std_logic := '0';
+    rAxiReset_n : out std_logic := '0';
+    rReset_n    : out std_logic := '0'
   );
 end rf_reset;
 
@@ -42,23 +40,25 @@ end rf_reset;
 architecture RTL of rf_reset is
 
   -- POR value for all resets are active high or low.
-  signal dResetPulseDly       : std_logic_vector(2 downto 0) := "111";
-  signal dResetPulseStretch   : std_logic := '1';
-  signal pResetPulseStretch   : std_logic_vector(1 downto 0) := "11";
-  signal pResetPulse_n        : std_logic := '0';
-  signal pAxiReset_n          : std_logic := '0';
+  signal dResetPulseDly     : std_logic_vector(2 downto 0) := "111";
+  signal dResetPulseStretch : std_logic := '1';
+  signal pResetPulseStretch : std_logic_vector(1 downto 0) := "11";
+  signal pResetPulse_n      : std_logic := '0';
+  signal pAxiReset_n        : std_logic := '0';
 
 
 begin
 
-  -- Clock Phase Diagram : ----------------------------------------------------
+  -----------------------------------------------------------------------------
+  -- Clock Phase Diagram
+  -----------------------------------------------------------------------------
   -- Before we look into the details of the clock alignment, here is the clock
   -- frequencies of all the synchronous clocks that is used in the design.
   -- PllRefClk is the reference clock for the FPGA PLL and all other clocks are
   -- derived from PllRefClk. PllRefClk for X410 is ~62.5 MHz
   -- PllRefClk = ~62.5 MHz (Sample clock/48. This is the X410 configuration and
   --                        could be different for other x4xx variants.)
-  -- DataClk   = PllRefClk*2.
+  -- DataClk   = PllRefClk*2
   -- DataClkx2 = PllRefClk*4
   -- RfClk     = PllRefClk*3
   -- RfClkx2   = PllRefClk*6
@@ -119,13 +119,17 @@ begin
   --  pResetPulse_n                                                                          |________________________________
   -- --------------------------------------------------------------------------
 
-  -- Since the dTimedReset is asserted only for one DataClk cycle, we
-  -- need to stretch the strobe to four DataClk cycles, so the strobe is wide
-  -- enough to be sampled by PllRefClk which is four times the DataClk period.
-  -- Pulse stretch is done for 4 DataClk periods to support the legacy mode.
-  -- We also do a logical OR on resets from software. Software resets are
-  -- from the ConfigClock domain which is a slower clock than the PllRefClk.
-  -- So, we don't have to stretch the software reset.
+  -----------------------------------------------------------------------------
+  -- Implementation
+  -----------------------------------------------------------------------------
+
+  -- Since the dTimedReset is asserted only for one DataClk cycle, we need to
+  -- stretch the strobe to four DataClk cycles, so the strobe is wide enough to
+  -- be sampled by PllRefClk which is four times the DataClk period. Pulse
+  -- stretch is done for 4 DataClk periods to support the legacy mode. We also
+  -- do a logical OR on resets from software. Software resets are from the
+  -- ConfigClock domain which is a slower clock than the PllRefClk. So, we
+  -- don't have to stretch the software reset.
   PulseStretch: process(DataClk)
   begin
     if rising_edge(DataClk) then
@@ -141,14 +145,14 @@ begin
   -- asserted for longer period. The FIR filter is the only design that
   -- requires reset to be asserted for 2 clock cycles. This requirement is
   -- satisfied with one PllRefClk period. RFDC does not have any AXI stream
-  -- reset time requirement. We will reset all designs for two PllRefClk
-  -- period just to be on the safer side. The same strategy is used for DAC
-  -- resets as well.
+  -- reset time requirement. We will reset all designs for two PllRefClk period
+  -- just to be on the safer side. The same strategy is used for DAC resets as
+  -- well.
   ResetOut: process(PllRefClk)
   begin
     if rising_edge(PllRefClk) then
       pResetPulseStretch <= pResetPulseStretch(0) & dResetPulseStretch;
-      pResetPulse_n <= not (pResetPulseStretch(1) or pResetPulseStretch(0));
+      pResetPulse_n      <= not (pResetPulseStretch(1) or pResetPulseStretch(0));
     end if;
   end process ResetOut;
 
@@ -184,7 +188,9 @@ begin
       end if;
   end process RfclkReset;
 
-  -----------------------------------------------------------------------------
+  -------------------------------------
+  -- RF Resets
+  -------------------------------------
   -- RFDC resets are asserted only once and it should be done using the reset
   -- from software. This is because we want the RFDC AXI-S interface in reset
   -- until the RfClk is stable. The only way to know if the RfClk is stable is
@@ -192,7 +198,6 @@ begin
   -- all clocks in the signal path. dSwReset is a software reset while is
   -- asserted for a longer period of time and it does not require any pulse
   -- stretch.
-  -----------------------------------------------------------------------------
 
   RfdcReset: process(PllRefClk)
   begin

@@ -1,47 +1,46 @@
----------------------------------------------------------------------
 --
--- Copyright 2020 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: PkgRf.vhd
+-- Module: PkgRf
 --
--- Purpose:
+-- Description:
 --
--- This package has some type definition and functions used in the RF
--- data chain.
+--   This package has some type definition and functions used in the RF data
+--   chain.
 --
-----------------------------------------------------------------------
 
-library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
 
 package PkgRf is
 
-  -- DDC sample data out width
-  constant kDdcDataOutWidth   : natural := 17;
+  -- DDC sample data out width.
+  constant kDdcDataOutWidth  : natural := 17;
   -- Each sample is padded in MSB with 7 extra bits of zero to byte align.
-  constant kDdcDataWordWidth  : natural := kDdcDataOutWidth+7;
-  -- DUC sample data out width
-  constant kDucDataOutWidth   : natural := 18;
+  constant kDdcDataWordWidth : natural := kDdcDataOutWidth+7;
+  -- DUC sample data out width.
+  constant kDucDataOutWidth  : natural := 18;
   -- Each sample is padded in MSB with 6 extra bits of zero to byte align.
-  constant kDucDataWordWidth  : natural := kDucDataOutWidth+6;
-  -- Saturated data output width
-  constant kSatDataWidth      : natural :=16;
-  -- ADC sample resolution
-  constant kAdcSampleRes  : natural := 16;
+  constant kDucDataWordWidth : natural := kDucDataOutWidth+6;
+  -- Saturated data output width.
+  constant kSatDataWidth     : natural := 16;
+  -- ADC sample resolution.
+  constant kAdcSampleRes     : natural := 16;
 
   subtype Sample18_t is    signed(17 downto 0);
   subtype Sample17_t is    signed(16 downto 0);
   subtype Sample16_t is    signed(15 downto 0);
   subtype Sample16slv_t is std_logic_vector(15 downto 0);
 
-  type Samples16_t is    array(natural range<>) of Sample16_t;
-  type Samples17_t is    array(natural range<>) of Sample17_t;
-  type Samples18_t is    array(natural range<>) of Sample18_t;
+  type Samples16_t is array(natural range<>) of Sample16_t;
+  type Samples17_t is array(natural range<>) of Sample17_t;
+  type Samples18_t is array(natural range<>) of Sample18_t;
 
-  -- These constants have the largest and smallest 18-bit,
-  -- 17-bit, and 16-bit signed values.
+  -- These constants have the largest and smallest 18-bit, 17-bit, and 16-bit
+  -- signed values.
   constant kLargest18  : Sample18_t := to_signed(2**17 - 1, 18);
   constant kSmallest18 : Sample18_t := to_signed(-2**17, 18);
   constant kLargest17  : Sample17_t := to_signed(2**16 - 1, 17);
@@ -94,10 +93,10 @@ package body PkgRf is
     return rval;
   end function to_stdlogicvector;
 
-  -- This function will convert a std_logic_vector into an array of
-  -- 18 bit signed array.  The input std_logic_vector has data packed
-  -- in 24 bits. But only 18 bits has valid data and remaining 6 MSB bits
-  -- are padded with zeros.
+  -- This function will convert a std_logic_vector into an array of 18 bit
+  -- signed array.  The input std_logic_vector has data packed in 24 bits. But
+  -- only 18 bits has valid data and remaining 6 MSB bits are padded with
+  -- zeros.
   function to_Samples18(d : std_logic_vector) return Samples18_t is
     -- This alias is used to normalize the input vector to [d'length-1 downto 0]
     alias normalD : std_logic_vector(d'length-1 downto 0) is d;
@@ -115,10 +114,10 @@ package body PkgRf is
     return rval;
   end function to_Samples18;
 
-  -- This function will convert a std_logic_vector into an array of
-  -- 16 bit signed array. The input std_logic_vector has data packed
-  -- in 16 bits. But only 15 bits has valid data and the uper two bits only
-  -- have the signed bit.
+  -- This function will convert a std_logic_vector into an array of 16 bit
+  -- signed array. The input std_logic_vector has data packed in 16 bits. But
+  -- only 15 bits has valid data and the uper two bits only have the signed
+  -- bit.
   function to_Samples16(d : std_logic_vector) return Samples16_t is
     -- This alias is used to normalize the input vector to [d'length-1 downto 0]
     alias normalD : std_logic_vector(d'length-1 downto 0) is d;
@@ -136,10 +135,10 @@ package body PkgRf is
     return rval;
   end function to_Samples16;
 
-  -- This function will convert a std_logic_vector into an array of
-  -- 19 bit signed array. The input std_logic_vector has data packed
-  -- in 24 bits. But only 17 bits has valid data and remaining 7 MSB bits
-  -- are padded with zeros.
+  -- This function will convert a std_logic_vector into an array of 19 bit
+  -- signed array. The input std_logic_vector has data packed in 24 bits. But
+  -- only 17 bits has valid data and remaining 7 MSB bits are padded with
+  -- zeros.
   function to_Samples17(d : std_logic_vector) return Samples17_t is
     -- This alias is used to normalize the input vector to [d'length-1 downto 0]
     alias normalD : std_logic_vector(d'length-1 downto 0) is d;
@@ -177,9 +176,9 @@ package body PkgRf is
   ---------------------------------------------------------------
   -- Function below this comment is used only for testbench.
   ---------------------------------------------------------------
-  -- This function does saturation of a signed number in std_logic_vector
-  -- data type. The current implementation supports only 17 or 18 bit
-  -- signed number.
+  -- This function does saturation of a signed number in std_logic_vector data
+  -- type. The current implementation supports only 17 or 18 bit signed
+  -- number.
   function tb_saturate(s: std_logic_vector) return Sample16slv_t is
     -- This alias is used to normalize the input vector to [s'length-1 downto 0]
     alias normalS : std_logic_vector(s'length-1 downto 0) is s;
