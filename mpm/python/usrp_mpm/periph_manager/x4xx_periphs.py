@@ -1343,8 +1343,8 @@ class RfdcRegsControl:
 
         if reset:
             if self._converter_chains_in_reset:
-                self.log.warning('Converters are already in reset. '
-                                 'The reset bit will NOT be toggled.')
+                self.log.debug('Converters are already in reset. '
+                               'The reset bit will NOT be toggled.')
                 return
             # Reset the ADC and DAC chains
             self.log.trace('Resetting ADC chain')
