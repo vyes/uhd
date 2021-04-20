@@ -15,6 +15,8 @@ from usrp_mpm.gpsd_iface import GPSDIfaceExtension
 class X4xxGPSMgr:
     """
     Manager class for GPS-related actions for the X4XX.
+
+    This also "disables" the sensors when the GPS is not enabled.
     """
     def __init__(self, clk_aux_board, log):
         assert clk_aux_board and clk_aux_board.is_gps_supported()
@@ -22,8 +24,20 @@ class X4xxGPSMgr:
         self.log = log.getChild('GPS')
         self.log.trace("Initializing GPSd interface")
         self._gpsd = GPSDIfaceExtension()
-        # This will add get_gps_xxx_sensor() methods to this class
-        self._gpsd.extend(self)
+        # To disable sensors, we simply return an empty value if GPS is disabled.
+        # For TPV, SKY, and GPGGA, we can do this in the same fashion (they are
+        # very similar). gps_time is different (it returns an int) so for sake
+        # of simplicity it's defined separately below.
+        for sensor_name in ('gps_tpv', 'gps_sky', 'gps_gpgga'):
+            sensor_api = f'get_{sensor_name}_sensor'
+            setattr(
+                self, sensor_api,
+                lambda sensor_name=sensor_name: {
+                    'name': sensor_name, 'type': 'STRING',
+                    'unit': '', 'value': 'n/a'} \
+                if not self.is_gps_enabled() \
+                else getattr(self._gpsd, f'get_{sensor_name}_sensor')()
+            )
 
     def extend(self, context):
         """
@@ -128,3 +142,16 @@ class X4xxGPSMgr:
             'unit': 'phase locked' if gps_phase_lock else 'no phase lock',
             'value': str(gps_phase_lock).lower(),
         }
+
+    def get_gps_time_sensor(self):
+        """
+
+        """
+        if not self.is_gps_enabled():
+            return {
+                'name': 'gps_time',
+                'type': 'INTEGER',
+                'unit': 'seconds',
+                'value': str(-1),
+            }
+        return self._gpsd.get_gps_time_sensor()
