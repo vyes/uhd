@@ -55,11 +55,11 @@ class CheckFilesystem(unittest.TestCase):
 
     def test_uhd_version(self):
         uhd_version = get_uhd_version(filesystem_root=self.args.filesystem_root)
-        self.assertEqual(uhd_version['version'], self.args.uhd_version)
+        self.assertIn(self.args.uhd_version, uhd_version)
 
     def test_uhd_githash(self):
         uhd_version = get_uhd_version(filesystem_root=self.args.filesystem_root)
-        self.assertEqual(uhd_version['githash'], self.args.uhd_githash)
+        self.assertIn(self.args.uhd_githash, uhd_version)
 
     def test_fpga_type(self):
         if self.mboard_regs_control is None:
