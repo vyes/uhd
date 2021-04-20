@@ -1441,31 +1441,26 @@ class MboardCPLD:
         self.peek32 = self.regs.peek32
 
     def enable_pll_ref_clk(self, enable=True):
-        """ Enables or disables the PLL reference clock """
-        def check_pll_enabled():
-            return self.peek32(self.DB_ENABLE_OFFSET) \
-                   & self.PLL_REF_CLOCK_ENABLED
+        """
+        Enables or disables the PLL reference clock.
 
+        This makes no assumptions on the prior state of the clock. It does check
+        if the clock-enable was successful by polling the CPLD, and throws if
+        not.
+        """
+        def check_pll_enabled():
+            return self.peek32(self.DB_ENABLE_OFFSET) & self.PLL_REF_CLOCK_ENABLED
         if enable:
-            if check_pll_enabled():
-                self.log.warning('PRC is already enabled. '
-                                 'Writing enable anyway.')
             self.poke32(self.DB_ENABLE_OFFSET, self.ENABLE_PRC)
             if not check_pll_enabled():
-                # TODO: Make this an error when the CPLD image with PRC
-                # enable is readily available
-                self.log.warning('PRC enable failed!')
-                # raise RuntimeError('PRC enable failed!')
-        else:
-            if not check_pll_enabled():
-                self.log.warning('PRC is already in reset. '
-                                 'Writing reset anyway.')
-            self.poke32(self.DB_ENABLE_OFFSET, self.DISABLE_PRC)
-            if check_pll_enabled():
-                # TODO: Make this an error when the CPLD image with PRC
-                # enable is readily available
-                self.log.warning('PRC reset failed!')
-                # raise RuntimeError('PRC reset failed!')
+                self.log.error("PRC enable failed!")
+                raise RuntimeError('PRC enable failed!')
+            return
+        # Disable PRC:
+        self.poke32(self.DB_ENABLE_OFFSET, self.DISABLE_PRC)
+        if check_pll_enabled():
+            self.log.error('PRC reset failed!')
+            raise RuntimeError('PRC reset failed!')
 
     def enable_daughterboard(self, db_id, enable=True):
         """ Enable or disable clock forwarding to a given DB """
