@@ -584,24 +584,29 @@ The following motherboard sensors are always available:
 - `fan0`: Fan 0 speed (RPM)
 - `fan1`: Fan 1 speed (RPM)
 
-The GPS sensors are only available if the GPS is active (note it may be inactive
-when using a different clock than `gpsdo`, see also \ref x4xx_usage_gps):
+The GPS sensors will return empty values if the GPS is inactive (note it may be
+inactive when using a different clock than `gpsdo`, see also \ref x4xx_usage_gps).
+There are two types of GPS sensors. The first set requires an active GPS module
+and is acquired by calling into gpsd on the embedded device, which in turn
+communicates with the GPS via a serial interface. For this reason, these sensors
+can take a few seconds before returning a valid value:
 
-TODO clean this up. The GpsdIface provides these sensors:
-
-- `gps_lock`: GPS lock
-- `gps_time`: GPS time in seconds sin ce the epch
+- `gps_time`: GPS time in seconds since the epoch
 - `gps_tpv`: A TPV report from GPSd serialized as JSON
 - `gps_sky`: A SKY report from GPSd serialized as JSON
-- `gps_gpgga`: GPGGA
+- `gps_gpgga`: GPGGA string
 
-The motherboard provides these sensors (come from pins, not gpsd):
+The seconds set of GPS sensors probes pins on the GPS module. They are all boolean
+sensors values. If the GPS is disabled, they will always return false.
 
-- `gps_locked`:
-- `gps_alarm`:
-- `gps_warmed_up`:
-- `gps_survey`:
-- `gps_phase_locked`:
+- `gps_enabled`: Returns true if the GPS module is powered on.
+- `gps_locked`: Returns the state of the 'LOCK_OK' pin.
+- `gps_alarm`: Returns the state of the 'ALARM' pin.
+- `gps_warmed_up`: Returns the state of the 'WARMUP_TRAINING' pin. Indicates
+                   warmup phase, can be high for minutes after enabling GPS.
+- `gps_survey`: Returns the state of the 'SURVEY_ACTIVE' pin. Indicates state of
+                auto survey process. Indicates that module is locked to GPS, and
+		that there are no events on the GPS module pending.
 
 \subsection x4xx_usage_rearpanelleds Rear Panel Status LEDs
 
