@@ -548,14 +548,19 @@ Support for using these with UHD is not yet available.
 The RF ports on the front panel of the X410 + ZBX correspond to the following
 subdev specifications:
 
-Label | Subdev Spec
-------|------------
-RF 0   | A:0
-RF 1   | A:1
-RF 2   | B:0
-RF 3   | B:1
+Label       | Subdev Spec
+------------|------------
+DB 0 / RF 0 | A:0
+DB 0 / RF 1 | A:1
+DB 1 / RF 0 | B:0
+DB 1 / RF 1 | B:1
 
-TODO this is probably wrong, check the labels
+The subdev spec slot identifiers "A" and "B" are not reflected on the front panel.
+They were set to match valid subdev specifications of previous USRPs, maintaining
+backward compatibility.
+
+These values can be used for uhd::usrp::multi_usrp::set_rx_subdev_spec() and
+uhd::usrp::multi_usrp::set_tx_subdev_spec() as with other USRPs.
 
 \subsection x4xx_usage_sensors The Sensor API
 
