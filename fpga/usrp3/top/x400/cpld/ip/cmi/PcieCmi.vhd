@@ -1,13 +1,15 @@
-
+--
 -- Copyright 2021 Ettus Research, a National Instruments Brand
-
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
-
+--
 -- Module: PcieCmi
-
+--
 -- Description:
---    This is an automatically generated file.
---    Do not modify this file directly!
+--
+--   This is an automatically generated file.
+--   Do not modify this file directly!
+--
 
 library ieee;
   use ieee.std_logic_1164.all;

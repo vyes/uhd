@@ -1,12 +1,232 @@
 //
-// Copyright 2019 Ettus Research, A National Instruments Company
+// Copyright 2021 Ettus Research, A National Instruments Brand
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// Module: ps_cpld_base_regs
-// Description:
-// Basic Registers to inform software about version and capabilities
+// Module: ps_cpld_regs
 //
+// Description:
+//
+//   Basic registers to inform software about version and capabilities.
+//
+// Parameters:
+//
+//   BASE_ADDRESS : Base address for CtrlPort registers
+//
+
+`default_nettype none
+
+
+module ps_cpld_regs #(
+  parameter BASE_ADDRESS = 0
+) (
+  input wire ctrlport_clk,
+  input wire ctrlport_rst,
+
+  // Request
+  input  wire        s_ctrlport_req_wr,
+  input  wire        s_ctrlport_req_rd,
+  input  wire [19:0] s_ctrlport_req_addr,
+  input  wire [31:0] s_ctrlport_req_data,
+  // Response
+  output reg         s_ctrlport_resp_ack,
+  output reg  [ 1:0] s_ctrlport_resp_status,
+  output reg  [31:0] s_ctrlport_resp_data,
+
+  // Configuration outputs
+  output reg  [ 1:0] db_clk_enable      = 2'b00,
+  output reg  [ 1:0] db_reset           = 2'b11,
+  output reg         pll_ref_clk_enable = 1'b0,
+
+  output reg  [11:0] dio_direction_a    = 12'b0,
+  output reg  [11:0] dio_direction_b    = 12'b0,
+
+  output reg  [39:0] serial_num         = 40'b0,
+  output reg         cmi_ready          = 1'b0,
+  input  wire        cmi_other_side_detected
+);
+
+`include "regmap/constants_regmap_utils.vh"
+`include "regmap/ps_cpld_base_regmap_utils.vh"
+`include "../../../lib/rfnoc/core/ctrlport.vh"
+
+//-----------------------------------------------------------------------------
+// Address Calculation
+//-----------------------------------------------------------------------------
+
+localparam NUM_ADDRESSES = 64;
+wire address_in_range = (s_ctrlport_req_addr >= BASE_ADDRESS) &&
+                        (s_ctrlport_req_addr < BASE_ADDRESS + NUM_ADDRESSES);
+
+//-----------------------------------------------------------------------------
+// Internal Registers
+//-----------------------------------------------------------------------------
+
+reg [SCRATCH_REGISTER_SIZE-1:0] scratch_reg;
+
+//-----------------------------------------------------------------------------
+// Handling of ControlPort Requests
+//-----------------------------------------------------------------------------
+
+always @(posedge ctrlport_clk) begin
+  // Reset internal registers and responses
+  if (ctrlport_rst) begin
+    scratch_reg         <= 0;
+    db_clk_enable       <= 2'b00;
+    db_reset            <= 2'b11;
+    pll_ref_clk_enable  <= 1'b0;
+    dio_direction_a     <= {DIO_DIRECTION_A_SIZE{1'b0}};
+    dio_direction_b     <= {DIO_DIRECTION_B_SIZE{1'b0}};
+    s_ctrlport_resp_ack <= 1'b0;
+
+  // Write requests
+  end else begin
+    if (s_ctrlport_req_wr) begin
+      // Always issue an ack and no data
+      s_ctrlport_resp_ack <= 1'b1;
+      s_ctrlport_resp_data <= {CTRLPORT_ADDR_W {1'bx}};
+      s_ctrlport_resp_status <= CTRL_STS_OKAY;
+
+      case (s_ctrlport_req_addr)
+        BASE_ADDRESS + SCRATCH_REGISTER:
+          scratch_reg <= s_ctrlport_req_data;
+
+        BASE_ADDRESS + PL_DB_REGISTER: begin
+          if (s_ctrlport_req_data[DISABLE_CLOCK_DB0]) begin
+            db_clk_enable[0] <= 1'b0;
+          end else if (s_ctrlport_req_data[ENABLE_CLOCK_DB0]) begin
+            db_clk_enable[0] <= 1'b1;
+          end
+          if (s_ctrlport_req_data[DISABLE_CLOCK_DB1]) begin
+            db_clk_enable[1] <= 1'b0;
+          end else if (s_ctrlport_req_data[ENABLE_CLOCK_DB1]) begin
+            db_clk_enable[1] <= 1'b1;
+          end
+          if (s_ctrlport_req_data[DISABLE_PLL_REF_CLOCK]) begin
+            pll_ref_clk_enable <= 1'b0;
+          end else if (s_ctrlport_req_data[ENABLE_PLL_REF_CLOCK]) begin
+            pll_ref_clk_enable <= 1'b1;
+          end
+          if (s_ctrlport_req_data[ASSERT_RESET_DB0]) begin
+            db_reset[0] <= 1'b1;
+          end else if (s_ctrlport_req_data[RELEASE_RESET_DB0]) begin
+            db_reset[0] <= 1'b0;
+          end
+          if (s_ctrlport_req_data[ASSERT_RESET_DB1]) begin
+            db_reset[1] <= 1'b1;
+          end else if (s_ctrlport_req_data[RELEASE_RESET_DB1]) begin
+            db_reset[1] <= 1'b0;
+          end
+        end
+
+        BASE_ADDRESS + DIO_DIRECTION_REGISTER: begin
+          dio_direction_a <= s_ctrlport_req_data[DIO_DIRECTION_A_MSB:DIO_DIRECTION_A];
+          dio_direction_b <= s_ctrlport_req_data[DIO_DIRECTION_B_MSB:DIO_DIRECTION_B];
+        end
+
+        BASE_ADDRESS + SERIAL_NUM_LOW_REG: begin
+          serial_num[31:0] <= s_ctrlport_req_data;
+        end
+
+        BASE_ADDRESS + SERIAL_NUM_HIGH_REG: begin
+          serial_num[39:32] <= s_ctrlport_req_data[SERIAL_NUM_HIGH_REG_SIZE-1:0];
+        end
+
+        BASE_ADDRESS + CMI_CONTROL_STATUS: begin
+          cmi_ready <= s_ctrlport_req_data[CMI_READY];
+        end
+
+        // Error on undefined address
+        default: begin
+          if (address_in_range) begin
+            s_ctrlport_resp_status <= CTRL_STS_CMDERR;
+
+          // No response if out of range
+          end else begin
+            s_ctrlport_resp_ack <= 1'b0;
+          end
+        end
+      endcase
+
+    // Read request
+    end else if (s_ctrlport_req_rd) begin
+      // Default assumption: valid request
+      s_ctrlport_resp_ack <= 1'b1;
+      s_ctrlport_resp_status <= CTRL_STS_OKAY;
+      s_ctrlport_resp_data <= {CTRLPORT_DATA_W {1'b0}};
+
+      case (s_ctrlport_req_addr)
+        BASE_ADDRESS + SIGNATURE_REGISTER:
+          s_ctrlport_resp_data <= PS_CPLD_SIGNATURE;
+
+        BASE_ADDRESS + REVISION_REGISTER:
+          s_ctrlport_resp_data <= CPLD_REVISION;
+
+        BASE_ADDRESS + OLDEST_COMPATIBLE_REVISION_REGISTER:
+          s_ctrlport_resp_data <= OLDEST_CPLD_REVISION;
+
+        BASE_ADDRESS + SCRATCH_REGISTER:
+          s_ctrlport_resp_data <= scratch_reg;
+
+        BASE_ADDRESS + GIT_HASH_REGISTER:
+          `ifdef GIT_HASH
+            s_ctrlport_resp_data <= `GIT_HASH;
+          `else
+            s_ctrlport_resp_data <= 32'hDEADBEEF;
+          `endif
+
+        BASE_ADDRESS + PL_DB_REGISTER: begin
+          s_ctrlport_resp_data[DB0_CLOCK_ENABLED]     <= db_clk_enable[0];
+          s_ctrlport_resp_data[DB1_CLOCK_ENABLED]     <= db_clk_enable[1];
+          s_ctrlport_resp_data[PLL_REF_CLOCK_ENABLED] <= pll_ref_clk_enable;
+          s_ctrlport_resp_data[DB0_RESET_ASSERTED]    <= db_reset[0];
+          s_ctrlport_resp_data[DB1_RESET_ASSERTED]    <= db_reset[1];
+        end
+
+        BASE_ADDRESS + DIO_DIRECTION_REGISTER: begin
+          s_ctrlport_resp_data[DIO_DIRECTION_A_MSB:DIO_DIRECTION_A] <= dio_direction_a;
+          s_ctrlport_resp_data[DIO_DIRECTION_B_MSB:DIO_DIRECTION_B] <= dio_direction_b;
+        end
+
+        BASE_ADDRESS + SERIAL_NUM_LOW_REG: begin
+          s_ctrlport_resp_data <= serial_num[31:0];
+        end
+
+        BASE_ADDRESS + SERIAL_NUM_HIGH_REG: begin
+          s_ctrlport_resp_data[SERIAL_NUM_HIGH_REG_SIZE-1:0] <= serial_num[39:32];
+        end
+
+        BASE_ADDRESS + CMI_CONTROL_STATUS: begin
+          s_ctrlport_resp_data[CMI_READY] <= cmi_ready;
+          s_ctrlport_resp_data[OTHER_SIDE_DETECTED] <= cmi_other_side_detected;
+        end
+
+        // Error on undefined address
+        default: begin
+          s_ctrlport_resp_data <= {CTRLPORT_DATA_W {1'bx}};
+          if (address_in_range) begin
+            s_ctrlport_resp_status <= CTRL_STS_CMDERR;
+
+          // No response if out of range
+          end else begin
+            s_ctrlport_resp_ack <= 1'b0;
+          end
+        end
+      endcase
+
+    // No request
+    end else begin
+      s_ctrlport_resp_ack <= 1'b0;
+    end
+  end
+end
+
+endmodule
+
+
+`default_nettype wire
+
+
 //XmlParse xml_on
 //<regmap name="PS_CPLD_BASE_REGMAP" readablestrobes="false" generatevhdl="true" ettusguidelines="true">
 //  <group name="PS_CPLD_BASE_REGS">
@@ -70,7 +290,7 @@
 //      <bitfield name="GIT_CLEAN" range="31..28">
 //        <info>
 //          0x0 in case the git status was clean{br}
-//          0xF in case there were uncommited changes
+//          0xF in case there were uncommitted changes
 //        </info>
 //      </bitfield>
 //      <bitfield name="GIT_HASH" range="27..0">
@@ -180,208 +400,3 @@
 //  </group>
 //</regmap>
 //XmlParse xml_off
-
-module ps_cpld_regs #(
-  parameter BASE_ADDRESS = 0
-)(
-  input wire ctrlport_clk,
-  input wire ctrlport_rst,
-
-  // Request
-  input  wire        s_ctrlport_req_wr,
-  input  wire        s_ctrlport_req_rd,
-  input  wire [19:0] s_ctrlport_req_addr,
-  input  wire [31:0] s_ctrlport_req_data,
-  // Response
-  output reg         s_ctrlport_resp_ack,
-  output reg  [ 1:0] s_ctrlport_resp_status,
-  output reg  [31:0] s_ctrlport_resp_data,
-
-  // Configuration outputs
-  output reg  [ 1:0] db_clk_enable = 2'b00,
-  output reg  [ 1:0] db_reset = 2'b11,
-  output reg         pll_ref_clk_enable = 1'b0,
-
-  output reg  [11:0] dio_direction_a = 12'b0,
-  output reg  [11:0] dio_direction_b = 12'b0,
-
-  output reg  [39:0] serial_num = 40'b0,
-  output reg         cmi_ready = 1'b0,
-  input  wire        cmi_other_side_detected
-);
-
-`include "regmap/constants_regmap_utils.vh"
-`include "regmap/ps_cpld_base_regmap_utils.vh"
-`include "../../../lib/rfnoc/core/ctrlport.vh"
-
-//----------------------------------------------------------
-// Address calculation
-//----------------------------------------------------------
-localparam NUM_ADDRESSES = 64;
-wire address_in_range = (s_ctrlport_req_addr >= BASE_ADDRESS) && (s_ctrlport_req_addr < BASE_ADDRESS + NUM_ADDRESSES);
-
-//----------------------------------------------------------
-// Internal registers
-//----------------------------------------------------------
-reg [SCRATCH_REGISTER_SIZE-1:0] scratch_reg;
-
-//----------------------------------------------------------
-// Handling of controlport requests
-//----------------------------------------------------------
-always @(posedge ctrlport_clk) begin
-  // reset internal registers and reponses
-  if (ctrlport_rst) begin
-    scratch_reg <= 0;
-    db_clk_enable <= 2'b00;
-    db_reset <= 2'b11;
-    pll_ref_clk_enable <= 1'b0;
-    //vhook_nowarn id=Misc11 msg={dio_direction_}
-    dio_direction_a <= {DIO_DIRECTION_A_SIZE{1'b0}};
-    dio_direction_b <= {DIO_DIRECTION_B_SIZE{1'b0}};
-    s_ctrlport_resp_ack <= 1'b0;
-    //vhook_nowarn id=Misc12 msg={s_ctrlport_resp_data}
-    //vhook_nowarn id=Misc12 msg={s_ctrlport_resp_status}
-
-  // write requests
-  end else begin
-    if (s_ctrlport_req_wr) begin
-      // always issue an ack and no data
-      s_ctrlport_resp_ack <= 1'b1;
-      s_ctrlport_resp_data <= {CTRLPORT_ADDR_W {1'bx}};
-      s_ctrlport_resp_status <= CTRL_STS_OKAY;
-
-      case (s_ctrlport_req_addr)
-        BASE_ADDRESS + SCRATCH_REGISTER:
-          scratch_reg <= s_ctrlport_req_data;
-
-        BASE_ADDRESS + PL_DB_REGISTER: begin
-          if (s_ctrlport_req_data[DISABLE_CLOCK_DB0]) begin
-            db_clk_enable[0] <= 1'b0;
-          end else if (s_ctrlport_req_data[ENABLE_CLOCK_DB0]) begin
-            db_clk_enable[0] <= 1'b1;
-          end
-          if (s_ctrlport_req_data[DISABLE_CLOCK_DB1]) begin
-            db_clk_enable[1] <= 1'b0;
-          end else if (s_ctrlport_req_data[ENABLE_CLOCK_DB1]) begin
-            db_clk_enable[1] <= 1'b1;
-          end
-          if (s_ctrlport_req_data[DISABLE_PLL_REF_CLOCK]) begin
-            pll_ref_clk_enable <= 1'b0;
-          end else if (s_ctrlport_req_data[ENABLE_PLL_REF_CLOCK]) begin
-            pll_ref_clk_enable <= 1'b1;
-          end
-          if (s_ctrlport_req_data[ASSERT_RESET_DB0]) begin
-            db_reset[0] <= 1'b1;
-          end else if (s_ctrlport_req_data[RELEASE_RESET_DB0]) begin
-            db_reset[0] <= 1'b0;
-          end
-          if (s_ctrlport_req_data[ASSERT_RESET_DB1]) begin
-            db_reset[1] <= 1'b1;
-          end else if (s_ctrlport_req_data[RELEASE_RESET_DB1]) begin
-            db_reset[1] <= 1'b0;
-          end
-        end
-
-        BASE_ADDRESS + DIO_DIRECTION_REGISTER: begin
-          dio_direction_a <= s_ctrlport_req_data[DIO_DIRECTION_A_MSB:DIO_DIRECTION_A];
-          dio_direction_b <= s_ctrlport_req_data[DIO_DIRECTION_B_MSB:DIO_DIRECTION_B];
-        end
-
-        BASE_ADDRESS + SERIAL_NUM_LOW_REG: begin
-          serial_num[31:0] <= s_ctrlport_req_data;
-        end
-
-        BASE_ADDRESS + SERIAL_NUM_HIGH_REG: begin
-          serial_num[39:32] <= s_ctrlport_req_data[SERIAL_NUM_HIGH_REG_SIZE-1:0];
-        end
-
-        BASE_ADDRESS + CMI_CONTROL_STATUS: begin
-          cmi_ready <= s_ctrlport_req_data[CMI_READY];
-        end
-
-        // error on undefined address
-        default: begin
-          if (address_in_range) begin
-            s_ctrlport_resp_status <= CTRL_STS_CMDERR;
-
-          // no response if out of range
-          end else begin
-            s_ctrlport_resp_ack <= 1'b0;
-          end
-        end
-      endcase
-
-    // read request
-    end else if (s_ctrlport_req_rd) begin
-      // default assumption: valid request
-      s_ctrlport_resp_ack <= 1'b1;
-      s_ctrlport_resp_status <= CTRL_STS_OKAY;
-      s_ctrlport_resp_data <= {CTRLPORT_DATA_W {1'b0}};
-
-      case (s_ctrlport_req_addr)
-        BASE_ADDRESS + SIGNATURE_REGISTER:
-          s_ctrlport_resp_data <= PS_CPLD_SIGNATURE;
-
-        BASE_ADDRESS + REVISION_REGISTER:
-          s_ctrlport_resp_data <= CPLD_REVISION;
-
-        BASE_ADDRESS + OLDEST_COMPATIBLE_REVISION_REGISTER:
-          s_ctrlport_resp_data <= OLDEST_CPLD_REVISION;
-
-        BASE_ADDRESS + SCRATCH_REGISTER:
-          s_ctrlport_resp_data <= scratch_reg;
-
-        BASE_ADDRESS + GIT_HASH_REGISTER:
-          `ifdef GIT_HASH
-            s_ctrlport_resp_data <= `GIT_HASH;
-          `else
-            s_ctrlport_resp_data <= 32'hDEADBEEF;
-          `endif
-
-        BASE_ADDRESS + PL_DB_REGISTER: begin
-          s_ctrlport_resp_data[DB0_CLOCK_ENABLED]     <= db_clk_enable[0];
-          s_ctrlport_resp_data[DB1_CLOCK_ENABLED]     <= db_clk_enable[1];
-          s_ctrlport_resp_data[PLL_REF_CLOCK_ENABLED] <= pll_ref_clk_enable;
-          s_ctrlport_resp_data[DB0_RESET_ASSERTED]    <= db_reset[0];
-          s_ctrlport_resp_data[DB1_RESET_ASSERTED]    <= db_reset[1];
-        end
-
-        BASE_ADDRESS + DIO_DIRECTION_REGISTER: begin
-          s_ctrlport_resp_data[DIO_DIRECTION_A_MSB:DIO_DIRECTION_A] <= dio_direction_a;
-          s_ctrlport_resp_data[DIO_DIRECTION_B_MSB:DIO_DIRECTION_B] <= dio_direction_b;
-        end
-
-        BASE_ADDRESS + SERIAL_NUM_LOW_REG: begin
-          s_ctrlport_resp_data <= serial_num[31:0];
-        end
-
-        BASE_ADDRESS + SERIAL_NUM_HIGH_REG: begin
-          s_ctrlport_resp_data[SERIAL_NUM_HIGH_REG_SIZE-1:0] <= serial_num[39:32];
-        end
-
-        BASE_ADDRESS + CMI_CONTROL_STATUS: begin
-          s_ctrlport_resp_data[CMI_READY] <= cmi_ready;
-          s_ctrlport_resp_data[OTHER_SIDE_DETECTED] <= cmi_other_side_detected;
-        end
-
-        // error on undefined address
-        default: begin
-          s_ctrlport_resp_data <= {CTRLPORT_DATA_W {1'bx}};
-          if (address_in_range) begin
-            s_ctrlport_resp_status <= CTRL_STS_CMDERR;
-
-          // no response if out of range
-          end else begin
-            s_ctrlport_resp_ack <= 1'b0;
-          end
-        end
-      endcase
-
-    // no request
-    end else begin
-      s_ctrlport_resp_ack <= 1'b0;
-    end
-  end
-end
-
-endmodule

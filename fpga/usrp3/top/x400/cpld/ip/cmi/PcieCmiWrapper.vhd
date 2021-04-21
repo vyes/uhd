@@ -1,13 +1,15 @@
-
+--
 -- Copyright 2021 Ettus Research, a National Instruments Brand
-
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
-
+--
 -- Module: PcieCmiWrapper
-
+--
 -- Description:
---    This is an automatically generated file.
---    Do not modify this file directly!
+--
+--   This is an automatically generated file.
+--   Do not modify this file directly!
+--
 
 
 library ieee;
