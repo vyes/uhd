@@ -41,20 +41,22 @@ else:
   commentString = "//"
 
 ## new header
-newHeader = """
- Copyright {} Ettus Research, a National Instruments Brand
-
- SPDX-License-Identifier: LGPL-3.0-or-later
-
- Module: {}
-
- Description:
-    This is an automatically generated file.
-    Do not modify this file directly!
+newHeader = """%
+% Copyright {} Ettus Research, a National Instruments Brand
+%
+% SPDX-License-Identifier: LGPL-3.0-or-later
+%
+% Module: {}
+%
+% Description:
+%
+%   This is an automatically generated file.
+%   Do not modify this file directly!
+%
 """.format(datetime.datetime.now().year, pathObject.stem)
 
 # add comment string to each comment line
-newHeader = re.sub("^(.)", commentString + " ", newHeader, flags=re.MULTILINE)
+newHeader = re.sub("^(%)", commentString, newHeader, flags=re.MULTILINE)
 
 # copy file without header
 with open(inputFilePath, 'r') as inputFile:
