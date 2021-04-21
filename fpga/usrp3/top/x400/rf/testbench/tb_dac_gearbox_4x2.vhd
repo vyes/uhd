@@ -1,20 +1,19 @@
----------------------------------------------------------------------
 --
--- Copyright 2019 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: tb_dac_gearbox_4x2.v
+-- Module: tb_dac_gearbox_4x2
 --
--- Purpose:
+-- Description:
 --
--- Self-checking testbench used to test the gearbox that reduces a 
--- 4 SPC data into a 2 SPC data. 
+-- Self-checking testbench used to test the gearbox that reduces a 4 SPC data
+-- into a 2 SPC data.
 --
-----------------------------------------------------------------------
 
-library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
 
 entity tb_dac_gearbox_4x2 is
 end tb_dac_gearbox_4x2;
@@ -36,14 +35,12 @@ architecture RTL of tb_dac_gearbox_4x2 is
 
   signal TestStart : boolean;
 
-  --vhook_sigstart
-  signal data_in_1x: std_logic_vector(127 downto 0);
-  signal data_out_2x: std_logic_vector(63 downto 0);
-  signal ready_out_1x: std_logic;
-  signal reset_n_1x: std_logic;
-  signal valid_in_1x: std_logic;
-  signal valid_out_2x: std_logic;
-  --vhook_sigend
+  signal data_in_1x   : std_logic_vector(127 downto 0);
+  signal data_out_2x  : std_logic_vector(63 downto 0);
+  signal ready_out_1x : std_logic;
+  signal reset_n_1x   : std_logic;
+  signal valid_in_1x  : std_logic;
+  signal valid_out_2x : std_logic;
 
   signal StopSim : boolean;
   constant kPer : time := 10 ns;
@@ -63,33 +60,30 @@ architecture RTL of tb_dac_gearbox_4x2 is
 
 begin
 
-  Clk   <= not Clk after kPer/2 when not StopSim else '0';
+  Clk   <= not Clk   after kPer/2 when not StopSim else '0';
   Clk2x <= not Clk2x after kPer/4 when not StopSim else '0';
 
-
-  --vhook   dac_gearbox_4x2
-  --vhook_a clk1x Clk
-  --vhook_a clk2x Clk2x
-  dac_gearbox_4x2x: dac_gearbox_4x2
+  dut: dac_gearbox_4x2
     port map (
-      clk1x        => Clk,           --in  wire
-      reset_n_1x   => reset_n_1x,    --in  wire
-      data_in_1x   => data_in_1x,    --in  wire[127:0]
-      valid_in_1x  => valid_in_1x,   --in  wire
-      ready_out_1x => ready_out_1x,  --out wire
-      clk2x        => Clk2x,         --in  wire
-      data_out_2x  => data_out_2x,   --out wire[63:0]
-      valid_out_2x => valid_out_2x); --out wire
+      clk1x        => Clk,
+      reset_n_1x   => reset_n_1x,
+      data_in_1x   => data_in_1x,
+      valid_in_1x  => valid_in_1x,
+      ready_out_1x => ready_out_1x,
+      clk2x        => Clk2x,
+      data_out_2x  => data_out_2x,
+      valid_out_2x => valid_out_2x
+    );
 
   main: process
   begin
     reset_n_1x <= '0';
-    TestStart <= false;
+    TestStart  <= false;
     ClkWait(5);
     reset_n_1x <= '1';
     ClkWait(5);
 
-    -- Ensure the outputs are quiet
+    -- Ensure the outputs are quiet.
     ClkWait(20);
     assert valid_out_2x'stable(kPer*20) and valid_out_2x = '0'
       report "valid not stable at de-asserted at startup"
@@ -98,7 +92,8 @@ begin
       report "data not stable at zero at startup"
       severity error;
 
-    -- Valid asserted, Enable asserted, Enable de-asserted, Valid de-asserted
+    -- Valid asserted, Enable asserted, Enable de-asserted, Valid de-asserted.
+
     ClkWait(10);
     TestStart <= true;
 
@@ -106,7 +101,7 @@ begin
     assert valid_out_2x'stable(kPer*100) and valid_out_2x = '1'
       report "valid not stable at asserted"
       severity error;
-    
+
     TestStart <= false;
     ClkWait(10);
     StopSim <= true;
@@ -122,25 +117,25 @@ begin
       valid_in_1x <= '0';
       if TestStart then
         valid_in_1x <= '1';
-        data_in_1x <= std_logic_vector(to_unsigned(tempQdata+3,16))  & std_logic_vector(to_unsigned(tempIdata+3,16)) &
-                      std_logic_vector(to_unsigned(tempQdata+2,16))  & std_logic_vector(to_unsigned(tempIdata+2,16)) &
-                      std_logic_vector(to_unsigned(tempQdata+1,16))  & std_logic_vector(to_unsigned(tempIdata+1,16)) &
-                      std_logic_vector(to_unsigned(tempQdata+0,16))  & std_logic_vector(to_unsigned(tempIdata+0,16));
-        tempQdata := tempQdata +4;
-        tempIdata := tempIdata +4;
+        data_in_1x  <= std_logic_vector(to_unsigned(tempQdata+3,16))  & std_logic_vector(to_unsigned(tempIdata+3,16)) &
+                       std_logic_vector(to_unsigned(tempQdata+2,16))  & std_logic_vector(to_unsigned(tempIdata+2,16)) &
+                       std_logic_vector(to_unsigned(tempQdata+1,16))  & std_logic_vector(to_unsigned(tempIdata+1,16)) &
+                       std_logic_vector(to_unsigned(tempQdata+0,16))  & std_logic_vector(to_unsigned(tempIdata+0,16));
+        tempQdata := tempQdata+4;
+        tempIdata := tempIdata+4;
       end if;
     end if;
   end process;
 
-  -- Process to generate expected data out of the DUT
+  -- Process to generate expected data out of the DUT.
   ExpectedData: process(Clk2x)
     variable qDataOut : unsigned(15 downto 0) := x"0001";
     variable iDataOut : unsigned(15 downto 0) := x"0080";
   begin
     if rising_edge(Clk2x) then
       if TestStart then
-        c2DataToCheck <= std_logic_vector((qDataOut+1)  & (iDataOut+1)  &
-                                          (qDataOut+0)  & (iDataOut+0));
+        c2DataToCheck <= std_logic_vector((qDataOut+1) & (iDataOut+1)  &
+                                          (qDataOut+0) & (iDataOut+0));
 
         qDataOut := qDataOut+2;
         iDataOut := iDataOut+2;
@@ -171,4 +166,3 @@ begin
   end process;
 
 end RTL;
-

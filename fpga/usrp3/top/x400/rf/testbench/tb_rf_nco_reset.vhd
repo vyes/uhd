@@ -1,19 +1,18 @@
----------------------------------------------------------------------
 --
--- Copyright 2020 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: tb_rf_nco_reset.vhd
+-- Module: tb_rf_nco_reset
 --
--- Purpose:
+-- Description:
 --
--- Self-checking testbench for NCO reset sequencing.
+--   Self-checking testbench for NCO reset sequencing.
 --
-----------------------------------------------------------------------
 
-library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
 
 entity tb_rf_nco_reset is
 end tb_rf_nco_reset;
@@ -21,26 +20,31 @@ end tb_rf_nco_reset;
 
 architecture RTL of tb_rf_nco_reset is
 
-  --vhook_sigstart
-  signal cAdc0xNcoUpdateReq: std_logic;
-  signal cAdc2xNcoUpdateReq: std_logic;
-  signal cDac0xNcoUpdateReq: std_logic;
-  signal cDac0xSysrefIntGating: std_logic;
-  signal cDac0xSysrefIntReenable: std_logic;
-  signal cDac1xNcoUpdateReq: std_logic;
-  signal cNcoPhaseRst: std_logic;
-  signal cNcoUpdateEn: std_logic_vector(5 downto 0);
-  signal ConfigClk: std_logic := '0';
-  signal DataClk: std_logic := '0';
-  signal dNcoResetDone: std_logic;
-  --vhook_sigend
+  signal cAdc0xNcoUpdateReq      : std_logic;
+  signal cAdc2xNcoUpdateReq      : std_logic;
+  signal cDac0xNcoUpdateReq      : std_logic;
+  signal cDac0xSysrefIntGating   : std_logic;
+  signal cDac0xSysrefIntReenable : std_logic;
+  signal cDac1xNcoUpdateReq      : std_logic;
+  signal cNcoPhaseRst            : std_logic;
+  signal cNcoUpdateEn            : std_logic_vector(5 downto 0);
+  signal dNcoResetDone           : std_logic;
 
-  signal dSysref: std_logic := '0';
-  signal cDac0xNcoUpdateBusy: std_logic_vector(1 downto 0) := "00";
-  signal dStartNcoReset: std_logic := '0';
-  signal cAdc0xNcoUpdateBusy: std_logic := '0';
-  signal cAdc2xNcoUpdateBusy: std_logic := '0';
-  signal cDac1xNcoUpdateBusy: std_logic := '0';
+  signal cDac0xNcoUpdateBusy : std_logic_vector(1 downto 0) := "00";
+  signal dStartNcoReset      : std_logic := '0';
+  signal cAdc0xNcoUpdateBusy : std_logic := '0';
+  signal cAdc2xNcoUpdateBusy : std_logic := '0';
+  signal cDac1xNcoUpdateBusy : std_logic := '0';
+
+  signal cSysref_ms, cSysref       : std_logic := '0';
+  signal cSysrefDlyd               : std_logic_vector(1 downto 0) := "00";
+  signal cDac0xSysrefIntGatingDlyd : std_logic := '0';
+  signal cNcoPhaseRstDlyd          : std_logic_vector(2 downto 0) := "000";
+
+  signal cWrCount : integer := 0;
+  type RfdcNcoState_t is (Idle, GateSysref, UpdateReq, CheckUpdate,
+                          SysrefEn, WaitForSysref, ResetDone);
+  signal cRfdcNcoState : RfdcNcoState_t := Idle;
 
   signal StopSim : boolean;
   constant kConfigClkPer : time := 25 ns;
@@ -50,15 +54,10 @@ architecture RTL of tb_rf_nco_reset is
   -- generated SYSREF and are related.
   constant kDataClkPer     : time := kSysrefPer/50;
 
-  signal cSysref_ms, cSysref : std_logic := '0';
-  signal cSysrefDlyd : std_logic_vector(1 downto 0) := "00";
-  signal cDac0xSysrefIntGatingDlyd : std_logic := '0';
-  signal cNcoPhaseRstDlyd : std_logic_vector(2 downto 0) := "000";
+  signal ConfigClk : std_logic := '0';
+  signal DataClk   : std_logic := '0';
+  signal dSysref   : std_logic := '0';
 
-  signal cWrCount : integer := 0;
-  type RfdcNcoState_t is (Idle, GateSysref, UpdateReq, CheckUpdate,
-                          SysrefEn, WaitForSysref, ResetDone);
-  signal cRfdcNcoState : RfdcNcoState_t := Idle;
   procedure DataClkWait(X : positive := 1) is
   begin
     for i in 1 to X loop
@@ -82,45 +81,45 @@ architecture RTL of tb_rf_nco_reset is
 
 begin
 
-  ConfigClk  <= not ConfigClk after kConfigClkPer/2 when not StopSim else '0';
-  DataClk  <= not DataClk after kDataClkPer/2 when not StopSim else '0';
-  dSysref  <= not dSysref after kSysrefPer/2 when not StopSim else '0';
+  ConfigClk <= not ConfigClk after kConfigClkPer/2 when not StopSim else '0';
+  DataClk   <= not DataClk   after kDataClkPer/2   when not StopSim else '0';
+  dSysref   <= not dSysref   after kSysrefPer/2    when not StopSim else '0';
 
-  --vhook_e rf_nco_reset DUT
-  --vhook_# Both cNcoPhaseRst and cNcoUpdateEn are constants in the DUT.
-  DUT: entity work.rf_nco_reset (RTL)
+  -- Both cNcoPhaseRst and cNcoUpdateEn are constants in the DUT.
+  dut: entity WORK.rf_nco_reset (RTL)
     port map (
-      ConfigClk               => ConfigClk,                --in  std_logic
-      DataClk                 => DataClk,                  --in  std_logic
-      dSysref                 => dSysref,                  --in  std_logic
-      dStartNcoReset          => dStartNcoReset,           --in  std_logic
-      cDac0xNcoUpdateBusy     => cDac0xNcoUpdateBusy,      --in  std_logic_vector(1:0)
-      cDac0xNcoUpdateReq      => cDac0xNcoUpdateReq,       --out std_logic:='0'
-      cDac0xSysrefIntGating   => cDac0xSysrefIntGating,    --out std_logic:='0'
-      cDac0xSysrefIntReenable => cDac0xSysrefIntReenable,  --out std_logic:='0'
-      cDac1xNcoUpdateBusy     => cDac1xNcoUpdateBusy,      --in  std_logic
-      cDac1xNcoUpdateReq      => cDac1xNcoUpdateReq,       --out std_logic:='0'
-      cAdc0xNcoUpdateBusy     => cAdc0xNcoUpdateBusy,      --in  std_logic
-      cAdc0xNcoUpdateReq      => cAdc0xNcoUpdateReq,       --out std_logic:='0'
-      cAdc2xNcoUpdateBusy     => cAdc2xNcoUpdateBusy,      --in  std_logic
-      cAdc2xNcoUpdateReq      => cAdc2xNcoUpdateReq,       --out std_logic:='0'
-      cNcoPhaseRst            => cNcoPhaseRst,             --out std_logic:='1'
-      cNcoUpdateEn            => cNcoUpdateEn,             --out std_logic_vector(5:0):="100000"
-      dNcoResetDone           => dNcoResetDone);           --out std_logic:='0'
+      ConfigClk               => ConfigClk,
+      DataClk                 => DataClk,
+      dSysref                 => dSysref,
+      dStartNcoReset          => dStartNcoReset,
+      cDac0xNcoUpdateBusy     => cDac0xNcoUpdateBusy,
+      cDac0xNcoUpdateReq      => cDac0xNcoUpdateReq,
+      cDac0xSysrefIntGating   => cDac0xSysrefIntGating,
+      cDac0xSysrefIntReenable => cDac0xSysrefIntReenable,
+      cDac1xNcoUpdateBusy     => cDac1xNcoUpdateBusy,
+      cDac1xNcoUpdateReq      => cDac1xNcoUpdateReq,
+      cAdc0xNcoUpdateBusy     => cAdc0xNcoUpdateBusy,
+      cAdc0xNcoUpdateReq      => cAdc0xNcoUpdateReq,
+      cAdc2xNcoUpdateBusy     => cAdc2xNcoUpdateBusy,
+      cAdc2xNcoUpdateReq      => cAdc2xNcoUpdateReq,
+      cNcoPhaseRst            => cNcoPhaseRst,
+      cNcoUpdateEn            => cNcoUpdateEn,
+      dNcoResetDone           => dNcoResetDone
+    );
 
   main: process
 
     -- Procedure to sweep the entire SYSREF period.
     -- When we strobe dStartNcoReset for one DataClk cycle. NCO reset sequence
-    -- is initiated. In this procedure, we sweep the dStartNcoReset strobe
-    -- the entire SYSREF cycle.
+    -- is initiated. In this procedure, we sweep the dStartNcoReset strobe the
+    -- entire SYSREF cycle.
     procedure SysrefSweep is
       constant kSysrefInRfCycles : integer := kSysrefPer/kDataClkPer;
     begin
       for i in 1 to kSysrefInRfCycles loop
         wait until cDac0xSysrefIntGating = '0' for 1 us;
         assert cDac0xSysrefIntGating = '0'
-          report "NCo phase reset does not deassert"
+          report "NCO phase reset does not de-assert"
           severity error;
         SysrefWait;
         DataClkWait(i);
@@ -129,10 +128,9 @@ begin
         dStartNcoReset <= '1';
         DataClkWait;
         dStartNcoReset <= '0';
-        -- Wait for a minimum of 3 SYSREF period. 1 SYSREF edge is
-        -- used to initiate NCO reset, 1 SYSREF edge is used to
-        -- re-enable SYSREF and 1 SYSREF edge is used by RFDC to reset
-        -- all NCOs.
+        -- Wait for a minimum of 3 SYSREF period. 1 SYSREF edge is used to
+        -- initiate NCO reset, 1 SYSREF edge is used to re-enable SYSREF and 1
+        -- SYSREF edge is used by RFDC to reset all NCOs.
         SysrefWait(3);
       end loop;
     end procedure;
@@ -148,9 +146,9 @@ begin
     wait;
   end process;
 
-  --Process to mimic RFDC NCO reset. This state machine is based of "NCO
-  -- frequency hopping" section in PG269 (v2.2). Refer to mult-mode subsection
-  -- for more details.
+  -- Process to mimic RFDC NCO reset
+  -- This state machine is based of "NCO frequency hopping" section in PG269
+  -- (v2.2). Refer to multi-mode subsection for more details.
   MimicRfdc: process(ConfigClk)
   begin
     if falling_edge(ConfigClk) then
@@ -176,8 +174,8 @@ begin
             cDac0xNcoUpdateBusy <= "11";
           end if;
 
-        -- If NCO reset is requested on other tiles, assert NCO update busy
-        -- on other tiles as well.
+        -- If NCO reset is requested on other tiles, assert NCO update busy on
+        -- other tiles as well.
         when UpdateReq =>
           cRfdcNcoState <= CheckUpdate;
           cDac1xNcoUpdateBusy <= cDac1xNcoUpdateReq;
@@ -187,8 +185,8 @@ begin
         -- It takes 5 clock cycles to update each RFDC internal registers with
         -- the used request change. In rf_nco_reset entity, we only want to
         -- reset the NCO, which is a single bit. So, it should take only 5
-        -- ConfigClk for the update. When the internal register is updated,
-        -- set cDac0xNcoUpdateBusy(0) to '0'.
+        -- ConfigClk for the update. When the internal register is updated, set
+        -- cDac0xNcoUpdateBusy(0) to '0'.
         when CheckUpdate =>
           cRfdcNcoState <= CheckUpdate;
           if cWrCount > 4 then
@@ -206,7 +204,7 @@ begin
           cRfdcNcoState <= SysrefEn;
           if cDac0xSysrefIntReenable = '1' then
             if cSysrefDlyd(0) = '0' and cSysref = '1' then
-              cDac0xNcoUpdateBusy <= "00"; --Indicates that NCO reset is complete
+              cDac0xNcoUpdateBusy <= "00"; --Indicates that NCO reset is complete.
               cRfdcNcoState <= ResetDone;
             else
               cRfdcNcoState <= WaitForSysref;
@@ -218,7 +216,7 @@ begin
         when WaitForSysref =>
           cRfdcNcoState <= WaitForSysref;
           if cSysrefDlyd(0) = '0' and cSysref = '1' then
-            cDac0xNcoUpdateBusy <= "00"; --Indicates that NCO reset is complete
+            cDac0xNcoUpdateBusy <= "00"; --Indicates that NCO reset is complete.
             cRfdcNcoState <= ResetDone;
           end if;
 
@@ -236,7 +234,7 @@ begin
   ConfigClkSysref: process(ConfigClk)
   begin
     if rising_edge(ConfigClk) then
-      cSysref_ms <= dSysref;
+      cSysref_ms  <= dSysref;
       cSysref     <= cSysref_ms;
       cSysrefDlyd <= cSysrefDlyd(cSysrefDlyd'high-1) & cSysref;
       cDac0xSysrefIntGatingDlyd <= cDac0xSysrefIntGating;
@@ -250,11 +248,11 @@ begin
   begin
     if falling_edge(ConfigClk) then
 
-      --Check if cNcoPhaseRst is a constant of '1'
+      --Check if cNcoPhaseRst is a constant of '1'.
       assert cNcoPhaseRst = '1'
         report "NCO phase reset signal should be constant."
         severity error;
-      -- Check if cNcoUpdateEn is a constant of "100000
+      -- Check if cNcoUpdateEn is a constant of "100000".
       assert cNcoUpdateEn = "100000"
         report "NCO phase reset signal should be constant."
         severity error;
@@ -265,15 +263,15 @@ begin
           severity error;
       end if;
 
-      -- We wait for couple of clock cycles after NCO done signal is toggled
-      -- in from the RFDC. RFDC uses cDac0xNcoUpdateBusy(1) to indicate NCO
-      -- reset process is done. It is important to wait a minimum of three
-      -- clock cycles before this check is done. This wait is needed for clock
+      -- We wait for couple of clock cycles after NCO done signal is toggled in
+      -- from the RFDC. RFDC uses cDac0xNcoUpdateBusy(1) to indicate NCO reset
+      -- process is done. It is important to wait a minimum of three clock
+      -- cycles before this check is done. This wait is needed for clock
       -- crossing.
       if cNcoPhaseRstDlyd(2) = '1' and cNcoPhaseRstDlyd(1) = '0' then
         assert dNcoResetDone = '1'
           report "NCO Reset done should have been asserted after NCO " &
-                 "reset request is deasserted"
+                 "reset request is de-asserted"
           severity error;
       end if;
 

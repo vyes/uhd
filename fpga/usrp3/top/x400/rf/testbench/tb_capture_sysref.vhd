@@ -1,19 +1,18 @@
----------------------------------------------------------------------
 --
--- Copyright 2019 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: tb_capture_sysref.v
+-- Module: tb_capture_sysref
 --
--- Purpose:
+-- Description:
 --
--- testbench, self-checking.
+--   Self-checking testbench for tb_capture_sysref.
 --
-----------------------------------------------------------------------
 
-library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
 
 entity tb_capture_sysref is
 end tb_capture_sysref;
@@ -31,22 +30,19 @@ architecture RTL of tb_capture_sysref is
       sysref_out_rclk : out std_logic);
   end component;
 
-  --vhook_sigstart
-  signal enable_rclk: std_logic := '0';
-  signal sysref_out_pclk: std_logic := '0';
-  signal sysref_out_rclk: std_logic := '0';
-  --vhook_sigend
+  signal enable_rclk     : std_logic := '0';
+  signal sysref_out_pclk : std_logic := '0';
+  signal sysref_out_rclk : std_logic := '0';
+  signal sysref_in       : std_logic := '0';
 
   signal SysrefDly, SysrefDlyDly, rSysref : std_logic := '0';
 
   signal StopSim : boolean;
   constant kPerPRC : time := 30 ns;
   constant kPerRF  : time := 10 ns;
-  constant kPerSR  : time := 300 ns;
 
-  signal sysref_in: std_logic := '0';
   signal PllRefClk : std_logic := '1';
-  signal RfdcClk : std_logic := '1';
+  signal RfdcClk   : std_logic := '1';
 
   procedure ClkWait(X : positive := 1) is
   begin
@@ -60,30 +56,15 @@ begin
   PllRefClk <= not PllRefClk after kPerPRC/2 when not StopSim else '0';
   RfdcClk   <= not RfdcClk   after kPerRF/2  when not StopSim else '0';
 
-  process(PllRefClk)
-    variable count : integer := 1;
-  begin
-    if rising_edge(PllRefClk) then
-      count := count +1;
-      if count = 10 then
-        sysref_in <= not sysref_in;
-        count := 1;
-      end if;
-    end if;
-  end process;
-
-  --vhook   capture_sysref
-  --vhook_a pll_ref_clk PllRefClk
-  --vhook_a rfdc_clk    RfdcClk
-  capture_sysrefx: capture_sysref
+  dut: capture_sysref
     port map (
-      pll_ref_clk     => PllRefClk,        --in  wire
-      rfdc_clk        => RfdcClk,          --in  wire
-      sysref_in       => sysref_in,        --in  wire
-      enable_rclk     => enable_rclk,      --in  wire
-      sysref_out_pclk => sysref_out_pclk,  --out wire
-      sysref_out_rclk => sysref_out_rclk); --out wire
-
+      pll_ref_clk     => PllRefClk,
+      rfdc_clk        => RfdcClk,
+      sysref_in       => sysref_in,
+      enable_rclk     => enable_rclk,
+      sysref_out_pclk => sysref_out_pclk,
+      sysref_out_rclk => sysref_out_rclk
+    );
 
   main: process
   begin
@@ -102,8 +83,19 @@ begin
     wait;
   end process;
 
+  sysref: process(PllRefClk)
+    variable count : integer := 1;
+  begin
+    if rising_edge(PllRefClk) then
+      count := count +1;
+      if count = 10 then
+        sysref_in <= not sysref_in;
+        count := 1;
+      end if;
+    end if;
+  end process;
 
-  checker_pllclk: process(PllRefClk)
+  checker_pll_ref_clk: process(PllRefClk)
   begin
     if falling_edge(PllRefClk) then
       SysrefDly    <= sysref_in;
@@ -114,7 +106,7 @@ begin
     end if;
   end process;
 
-  checker_RfdcClk: process(RfdcClk)
+  checker_rfdc_clk: process(RfdcClk)
   begin
     if falling_edge(RfdcClk) then
       rSysref    <= sysref_out_pclk;
@@ -123,6 +115,5 @@ begin
         severity error;
     end if;
   end process;
-
 
 end RTL;

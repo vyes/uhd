@@ -1,21 +1,21 @@
----------------------------------------------------------------------
 --
--- Copyright 2019 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: tb_rf_reset_controller.vhd
+-- Module: tb_rf_reset_controller
 --
--- Purpose: Testbench for rf_reset_controller.
+-- Description:
 --
+--   Testbench for rf_reset_controller.
 --
-----------------------------------------------------------------------
 
-library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
 
-library work;
-  use work.PkgRFDC_REGS_REGMAP.all;
+library WORK;
+  use WORK.PkgRFDC_REGS_REGMAP.all;
 
 entity tb_rf_reset_controller is
 end tb_rf_reset_controller;
@@ -47,17 +47,15 @@ architecture RTL of tb_rf_reset_controller is
       cSoftwareStatus    : out std_logic_vector(31 downto 0));
   end component;
 
-  --vhook_sigstart
-  signal cSoftwareStatus: std_logic_vector(31 downto 0);
-  signal r2AdcFirReset_n: std_logic;
-  signal r2DacFirReset_n: std_logic;
-  signal rAdcGearboxReset_n: std_logic;
-  signal rDacGearboxReset_n: std_logic;
-  --vhook_sigend
+  signal cSoftwareStatus    : std_logic_vector(31 downto 0);
+  signal r2AdcFirReset_n    : std_logic;
+  signal r2DacFirReset_n    : std_logic;
+  signal rAdcGearboxReset_n : std_logic;
+  signal rDacGearboxReset_n : std_logic;
 
-  signal cSoftwareControl: std_logic_vector(31 downto 0) := (others => '0');
-  signal dAdcResetPulse: std_logic := '0';
-  signal dDacResetPulse: std_logic := '0';
+  signal cSoftwareControl : std_logic_vector(31 downto 0) := (others => '0');
+  signal dAdcResetPulse   : std_logic := '0';
+  signal dDacResetPulse   : std_logic := '0';
 
   constant kSwReset    : std_logic := '0';
   constant kTimedReset : std_logic := '1';
@@ -72,11 +70,11 @@ architecture RTL of tb_rf_reset_controller is
   constant kConfigPer       : time := 25 ns;
   -- Make sure the PllRefClk period is a least common multiple of all the other
   -- derived clock.
-  constant kPllRefClkPer  : time := 12 ns;
-  constant kDataClkPer    : time := kPllRefClkPer/2;
-  constant kDataClk2xPer  : time := kPllRefClkPer/4;
-  constant kRfClkPer      : time := kPllRefClkPer/3;
-  constant kRfClk2xPer    : time := kPllRefClkPer/6;
+  constant kPllRefClkPer : time := 12 ns;
+  constant kDataClkPer   : time := kPllRefClkPer/2;
+  constant kDataClk2xPer : time := kPllRefClkPer/4;
+  constant kRfClkPer     : time := kPllRefClkPer/3;
+  constant kRfClk2xPer   : time := kPllRefClkPer/6;
 
   signal pReset  : boolean := false;
   signal dCount  : integer := 0;
@@ -105,17 +103,17 @@ architecture RTL of tb_rf_reset_controller is
   signal r2AdcFirResetDlyd_n    : std_logic := '0';
   signal r2DacFirResetDlyd_n    : std_logic := '0';
 
-  signal ExpectedSwAdcResetDone  : std_logic := '0';
-  signal ExpectedAdcReset   : std_logic := '0';
-  signal ExpectedSwDacResetDone  : std_logic := '0';
-  signal ExpectedDacReset   : std_logic := '0';
-  signal ExpectedAxiAdcResetOut  : std_logic := '0';
-  signal ExpectedAxiDacResetOut  : std_logic := '0';
+  signal ExpectedSwAdcResetDone : std_logic := '0';
+  signal ExpectedAdcReset       : std_logic := '0';
+  signal ExpectedSwDacResetDone : std_logic := '0';
+  signal ExpectedDacReset       : std_logic := '0';
+  signal ExpectedAxiAdcResetOut : std_logic := '0';
+  signal ExpectedAxiDacResetOut : std_logic := '0';
 
   -- Make sure the wait time for reset done check is at least 10 ConfigClk
-  -- cycles to account for all clock domain crossings. We also have some
-  -- status check in the testbench which requires the wait to be additional
-  -- ConfigClk cycles. This wait is in ConfigClk period.
+  -- cycles to account for all clock domain crossings. We also have some status
+  -- check in the testbench which requires the wait to be additional ConfigClk
+  -- cycles. This wait is in ConfigClk period.
   constant kResetDoneWait : positive := 10;
 
   procedure ClkWait(signal clk : in std_logic; X : positive := 1) is
@@ -125,8 +123,8 @@ architecture RTL of tb_rf_reset_controller is
     end loop;
   end procedure ClkWait;
 
-  -- Check phase alignment of reset. We want to make sure the reset is
-  -- asserted on the 1st rising clock edge after the rising edge of PllRefClk.
+  -- Check phase alignment of reset. We want to make sure the reset is asserted
+  -- on the 1st rising clock edge after the rising edge of PllRefClk.
   procedure CheckAlignment(
     signal Clk         : in    std_logic; -- Synchronous reset clock
     signal Reset_n     : in    std_logic; -- Synchronous reset
@@ -135,7 +133,8 @@ architecture RTL of tb_rf_reset_controller is
     Message            : string) is       -- Assertion message
   begin
 
-    -- Check if reset is asserted on the 1st Clk after the rising edge of PllRefClk
+    -- Check if reset is asserted on the 1st Clk after the rising edge of
+    -- PllRefClk.
     if falling_edge(Clk) then
       ResetDlyd_n <= Reset_n;
       if Reset_n = '0' and ResetDlyd_n = '1' then
@@ -145,13 +144,13 @@ architecture RTL of tb_rf_reset_controller is
     end if;
   end procedure CheckAlignment;
 
-  -- Procedure to generate phase counter that is used to check the alignment
-  -- of phase of all clocks related to PllRefClk.
+  -- Procedure to generate phase counter that is used to check the alignment of
+  -- phase of all clocks related to PllRefClk.
   procedure PhaseCounter(
-    signal Clk        : in std_logic; -- Clock related to PllRefClk
-    signal Reset      : in boolean; -- Reset synchronous to PllRefClk
-    signal PhaseCount : inout integer; -- Phase count of Clk with respect to PllRefClk
-    ClockCycles       : integer) is -- Number of Clk clock cycles in PllRefClk period
+    signal Clk        : in    std_logic; -- Clock related to PllRefClk
+    signal Reset      : in    boolean;   -- Reset synchronous to PllRefClk
+    signal PhaseCount : inout integer;   -- Phase count of Clk with respect to PllRefClk
+    ClockCycles       : integer) is      -- Number of Clk clock cycles in PllRefClk period
   begin
     if rising_edge(Clk) then
         if Reset or PhaseCount = ClockCycles-1 then
@@ -178,49 +177,48 @@ architecture RTL of tb_rf_reset_controller is
   end procedure CheckExpectedValue;
 begin
 
-  ConfigClk <= not ConfigClk after kConfigPer/2     when not StopSim else '0';
-  RfClk     <= not RfClk     after kRfClkPer/2      when not StopSim else '0';
-  RfClk2x   <= not RfClk2x   after kRfClk2xPer/2    when not StopSim else '0';
-  DataClk   <= not DataClk   after kDataClkPer/2    when not StopSim else '0';
-  DataClk2x <= not DataClk2x after kDataClk2xPer/2  when not StopSim else '0';
-  PllRefClk <= not PllRefClk after kPllRefClkPer/2  when not StopSim else '0';
+  ConfigClk <= not ConfigClk after kConfigPer/2    when not StopSim else '0';
+  RfClk     <= not RfClk     after kRfClkPer/2     when not StopSim else '0';
+  RfClk2x   <= not RfClk2x   after kRfClk2xPer/2   when not StopSim else '0';
+  DataClk   <= not DataClk   after kDataClkPer/2   when not StopSim else '0';
+  DataClk2x <= not DataClk2x after kDataClk2xPer/2 when not StopSim else '0';
+  PllRefClk <= not PllRefClk after kPllRefClkPer/2 when not StopSim else '0';
 
-  --vhook   rf_reset_controller DUT
-  --vhook_# rAdcEnableData is a constant and is not tested.
-  --vhook_a rAdcEnableData open
-  DUT: rf_reset_controller
+  -- rAdcEnableData is a constant and is not tested.
+  dut: rf_reset_controller
     port map (
-      ConfigClk          => ConfigClk,           --in  std_logic
-      DataClk            => DataClk,             --in  std_logic
-      PllRefClk          => PllRefClk,           --in  std_logic
-      RfClk              => RfClk,               --in  std_logic
-      RfClk2x            => RfClk2x,             --in  std_logic
-      DataClk2x          => DataClk2x,           --in  std_logic
-      dAdcResetPulse     => dAdcResetPulse,      --in  std_logic
-      dDacResetPulse     => dDacResetPulse,      --in  std_logic
-      dAdcDataOutReset_n => dAdcDataOutReset_n,  --out std_logic
-      r2AdcFirReset_n    => r2AdcFirReset_n,     --out std_logic
-      rAdcRfdcAxiReset_n => rAdcRfdcAxiReset_n,  --out std_logic
-      rAdcEnableData     => open,                --out std_logic
-      rAdcGearboxReset_n => rAdcGearboxReset_n,  --out std_logic
-      dDacDataInReset_n  => dDacDataInReset_n,   --out std_logic
-      r2DacFirReset_n    => r2DacFirReset_n,     --out std_logic
-      d2DacFirReset_n    => d2DacFirReset_n,     --out std_logic
-      rDacRfdcAxiReset_n => rDacRfdcAxiReset_n,  --out std_logic
-      rDacGearboxReset_n => rDacGearboxReset_n,  --out std_logic
-      cSoftwareControl   => cSoftwareControl,    --in  std_logic_vector(31:0)
-      cSoftwareStatus    => cSoftwareStatus);    --out std_logic_vector(31:0)
+      ConfigClk          => ConfigClk,
+      DataClk            => DataClk,
+      PllRefClk          => PllRefClk,
+      RfClk              => RfClk,
+      RfClk2x            => RfClk2x,
+      DataClk2x          => DataClk2x,
+      dAdcResetPulse     => dAdcResetPulse,
+      dDacResetPulse     => dDacResetPulse,
+      dAdcDataOutReset_n => dAdcDataOutReset_n,
+      r2AdcFirReset_n    => r2AdcFirReset_n,
+      rAdcRfdcAxiReset_n => rAdcRfdcAxiReset_n,
+      rAdcEnableData     => open,
+      rAdcGearboxReset_n => rAdcGearboxReset_n,
+      dDacDataInReset_n  => dDacDataInReset_n,
+      r2DacFirReset_n    => r2DacFirReset_n,
+      d2DacFirReset_n    => d2DacFirReset_n,
+      rDacRfdcAxiReset_n => rDacRfdcAxiReset_n,
+      rDacGearboxReset_n => rDacGearboxReset_n,
+      cSoftwareControl   => cSoftwareControl,
+      cSoftwareStatus    => cSoftwareStatus
+    );
 
   main: process
 
     -- Procedure to generate software reset and expected DUR reset output.
     procedure StrobeReset(
-      signal TimedReset           : out std_logic; -- SW Reset control
-      signal ExpectedResetOut     : out std_logic; -- Expected reset values
-      signal ExpectedAxiResetOut  : out std_logic; -- Expected reset values
-      signal SwResetStatus        : out std_logic; -- Expected SW reset status
-      SwReset                     : integer; -- SW Reset control
-      ResetType                   : std_logic; -- 0 = SW reset, 1 = UHD timed reset
+      signal TimedReset           : out std_logic;    -- SW Reset control
+      signal ExpectedResetOut     : out std_logic;    -- Expected reset values
+      signal ExpectedAxiResetOut  : out std_logic;    -- Expected reset values
+      signal SwResetStatus        : out std_logic;    -- Expected SW reset status
+      SwReset                     : integer;          -- SW Reset control
+      ResetType                   : std_logic;        -- 0 = SW reset, 1 = UHD timed reset
       ResetWait                   : positive := 1) is -- Wait time for test iteration
     begin
       if ResetType = kSwReset then
@@ -261,12 +259,12 @@ begin
         ExpectedResetOut <= '1';
         -- Wait for ResetWait time before exiting the test iteration.
         ClkWait(ConfigClk,ResetWait);
-      else --timed command
+      else -- Timed command.
         ClkWait(DataClk,ResetWait);
         TimedReset <= '1';
         -- RFDC should not be asserted with timed reset.
         ExpectedAxiResetOut <= '1';
-        -- Strobe the reset pulse only for one DataClk period
+        -- Strobe the reset pulse only for one DataClk period.
         ClkWait(DataClk,1);
         TimedReset <= '0';
         ClkWait(PllRefClk,2);
@@ -284,10 +282,10 @@ begin
     end procedure StrobeReset;
 
   begin
-    -- Expected power on reset values
-    ExpectedAdcReset  <= '0';
+    -- Expected power on reset values.
+    ExpectedAdcReset       <= '0';
     ExpectedAxiAdcResetOut <= '0';
-    ExpectedDacReset  <= '0';
+    ExpectedDacReset       <= '0';
     ExpectedAxiDacResetOut <= '0';
 
     ClkWait(ConfigClk,1);
@@ -295,11 +293,11 @@ begin
     ExpectedAxiAdcResetOut <= '1';
     ExpectedAxiDacResetOut <= '1';
     ClkWait(ConfigClk,1);
-    ExpectedAdcReset  <= '-';
-    ExpectedDacReset  <= '-';
+    ExpectedAdcReset <= '-';
+    ExpectedDacReset <= '-';
     ClkWait(ConfigClk,1);
-    ExpectedAdcReset  <= '1';
-    ExpectedDacReset  <= '1';
+    ExpectedAdcReset <= '1';
+    ExpectedDacReset <= '1';
     ClkWait(ConfigClk,5);
     -- This reset is for simulation to have a common reference to check for
     -- clock alignment.
@@ -309,33 +307,45 @@ begin
     pReset <= false;
     ClkWait(PllRefClk,1);
 
-    -------------------------------
-    -- Test resets from software --
-    -------------------------------
-    --ADC
+    ---------------------------------------------------------------------------
+    -- Test resets from software
+    ---------------------------------------------------------------------------
+
+    -----------------------------------
+    -- ADC
+    -----------------------------------
+
     StrobeReset(dAdcResetPulse, ExpectedAdcReset, ExpectedAxiAdcResetOut,
                 ExpectedSwAdcResetDone, kADC_RESET, kSwReset, kResetDoneWait);
+
     -- Align reset to the rising edge of PllRefClk
     ClkWait(PllRefClk,1);
     StrobeReset(dAdcResetPulse, ExpectedAdcReset, ExpectedAxiAdcResetOut,
                 ExpectedSwAdcResetDone, kADC_RESET, kTimedReset, kResetDoneWait);
     StrobeReset(dAdcResetPulse, ExpectedAdcReset, ExpectedAxiAdcResetOut,
                 ExpectedSwAdcResetDone, kADC_RESET, kSwReset, kResetDoneWait);
-    -- Align reset to the falling edge of PllRefClk
+
+    -- Align reset to the falling edge of PllRefClk.
     ClkWait(PllRefClk,1);
     ClkWait(DataClk,1);
     StrobeReset(dAdcResetPulse, ExpectedAdcReset, ExpectedAxiAdcResetOut,
                 ExpectedSwAdcResetDone, kADC_RESET, kTimedReset, kResetDoneWait);
-    --DAC
+
+    -----------------------------------
+    -- DAC
+    -----------------------------------
+
     StrobeReset(dDacResetPulse, ExpectedDacReset, ExpectedAxiDacResetOut,
                 ExpectedSwDacResetDone, kDAC_RESET, kSwReset, kResetDoneWait);
-    -- Align reset to the rising edge of PllRefClk
+
+    -- Align reset to the rising edge of PllRefClk.
     ClkWait(PllRefClk,1);
     StrobeReset(dDacResetPulse, ExpectedDacReset, ExpectedAxiDacResetOut,
                 ExpectedSwDacResetDone, kDAC_RESET, kTimedReset, kResetDoneWait);
     StrobeReset(dDacResetPulse, ExpectedDacReset, ExpectedAxiDacResetOut,
                 ExpectedSwDacResetDone, kDAC_RESET, kSwReset, kResetDoneWait);
-    -- Align reset to the falling edge of PllRefClk
+
+    -- Align reset to the falling edge of PllRefClk.
     ClkWait(PllRefClk,1);
     ClkWait(DataClk,1);
     StrobeReset(dDacResetPulse, ExpectedDacReset, ExpectedAxiDacResetOut,
@@ -345,12 +355,13 @@ begin
     wait;
   end process main;
 
-  ---------------------------------------------------
-  ---- Reset from software  and UHD timed command ---
-  ---------------------------------------------------
+  -----------------------------------------------------------------------------
+  -- Reset from software and UHD timed command
+  -----------------------------------------------------------------------------
   -- Check if the correct resets are getting asserted when UHD timed reset or
   -- software reset is asserted. Except for RFDC AXI-S reset all other resets
   -- should be strobed for UHD timed reset.
+  -----------------------------------------------------------------------------
 
   -- Check if the reset done status is getting asserted as expected.
   CheckExpectedValue(ConfigClk, cSoftwareStatus(kADC_SEQ_DONE),
@@ -358,23 +369,23 @@ begin
   CheckExpectedValue(ConfigClk, cSoftwareStatus(kDAC_SEQ_DONE),
                      ExpectedSwDacResetDone, "DAC reset done status");
 
-  -- check if resets state in DataClk is as expected.
+  -- Check if resets state in DataClk is as expected.
   CheckExpectedValue(DataClk, dAdcDataOutReset_n, ExpectedAdcReset,
                      "ADC data out reset");
   CheckExpectedValue(DataClk, dDacDataInReset_n, ExpectedDacReset,
                      "DAC data out reset");
 
-  -- check if resets state in DataClk2x is as expected.
+  -- Check if resets state in DataClk2x is as expected.
   CheckExpectedValue(DataClk2x, d2DacFirReset_n, ExpectedDacReset,
                      "400M interpolator reset");
 
-  ---- check if resets state in RfClk2x is as expected.
+  ---- Check if resets state in RfClk2x is as expected.
   CheckExpectedValue(RfClk2x, r2AdcFirReset_n, ExpectedAdcReset,
-                     "ADC resampler reset");
+                     "ADC re-sampler reset");
   CheckExpectedValue(RfClk2x, r2DacFirReset_n, ExpectedDacReset,
-                     "DAC resampler reset");
+                     "DAC re-sampler reset");
 
-  ---- check if resets state in RfClk is as expected.
+  ---- Check if resets state in RfClk is as expected.
   CheckExpectedValue(RfClk, rAdcRfdcAxiReset_n, ExpectedAxiAdcResetOut,
                      "ADC RFDC AXI-S interface reset");
   CheckExpectedValue(RfClk, rDacRfdcAxiReset_n, ExpectedAxiDacResetOut,
@@ -384,38 +395,42 @@ begin
   CheckExpectedValue(RfClk, rDacGearboxReset_n, ExpectedDacReset,
                      "DAC gearbox reset");
 
-  -----------------------------------------------------
-  -- Reset alignment checks for resets
-  ---------------------------------------------------
+
   -----------------------------------------------------------------------------
-  -- Clock counter:
+  -- Reset alignment checks for resets
+  -----------------------------------------------------------------------------
+
+  -----------------------------------
+  -- Clock counter
+  -----------------------------------
   -- We use counters to check the phase of all the derived clocks with respect
   -- to PllRefClk. Each counter will rollover at the rising edge of PllRefClk.
-  -----------------------------------------------------------------------------
+  -----------------------------------
   PhaseCounter(DataClk,   pReset, dCount,  kDataClkCycles);
   PhaseCounter(DataClk2x, pReset, d2Count, kDataClk2xCycles);
   PhaseCounter(RfClk,     pReset, rCount,  kRfClkCycles);
   PhaseCounter(RfClk2x,   pReset, r2Count, kRfClk2xCycles);
 
-  -- Check for DataClk based synchronous reset alignment to PllRefClk
+  -- Check for DataClk based synchronous reset alignment to PllRefClk.
   CheckAlignment(DataClk, dAdcDataOutReset_n, dAdcDataOutResetDlyd_n, dCount,
                  "ADC data out");
   CheckAlignment(DataClk, dDacDataInReset_n, dDacDataInResetDlyd_n, dCount,
                  "DAC data in");
 
-  -- Check for DataClk2x based synchronous reset alignment to PllRefClk
+  -- Check for DataClk2x based synchronous reset alignment to PllRefClk.
   CheckAlignment(DataClk2x, d2DacFirReset_n, d2DacFirResetDlyd_n, d2Count,
                  "400M DAC FIR Filter");
 
-  -- Check for RfClk based synchronous reset alignment to PllRefClk
+  -- Check for RfClk based synchronous reset alignment to PllRefClk.
   CheckAlignment(RfClk, rAdcRfdcAxiReset_n, rAdcRfdcAxiResetDlyd_n, rCount,
                  "ADC RFDC reset ");
   CheckAlignment(RfClk, rDacRfdcAxiReset_n, rDacRfdcAxiResetDlyd_n, rCount,
                  "DAC RFDC reset ");
 
-  -- Check for RfClk2x based synchronous reset alignment to PllRefClk
+  -- Check for RfClk2x based synchronous reset alignment to PllRefClk.
   CheckAlignment(RfClk2x, r2AdcFirReset_n, r2AdcFirResetDlyd_n, r2Count,
                  "ADC decimation filter reset ");
   CheckAlignment(RfClk2x, r2DacFirReset_n, r2DacFirResetDlyd_n, r2Count,
                  "DAC interpolation filter reset ");
+
 end RTL;

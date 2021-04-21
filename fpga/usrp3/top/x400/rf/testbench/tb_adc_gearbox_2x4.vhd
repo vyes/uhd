@@ -1,20 +1,19 @@
----------------------------------------------------------------------
 --
--- Copyright 2019 Ettus Research, A National Instruments Brand
+-- Copyright 2021 Ettus Research, a National Instruments Brand
+--
 -- SPDX-License-Identifier: LGPL-3.0-or-later
 --
--- Module: tb_adc_gearbox_2x4.v
+-- Module: tb_adc_gearbox_2x4
 --
--- Purpose:
+-- Description:
 --
--- Self-checking testbench for the gearbox that expands the datawidth
--- from 2 SPC to 4 SPC.
+--   Self-checking testbench for the gearbox that expands the data width from 2
+--   SPC to 4 SPC.
 --
-----------------------------------------------------------------------
 
-library ieee;
-  use ieee.std_logic_1164.all;
-  use ieee.numeric_std.all;
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
 
 entity tb_adc_gearbox_2x4 is
 end tb_adc_gearbox_2x4;
@@ -34,23 +33,21 @@ architecture RTL of tb_adc_gearbox_2x4 is
       c1DataValidOut : out std_logic);
   end component;
 
-  --vhook_sigstart
-  signal c1DataValidOut: std_logic;
-  --vhook_sigend
-
   signal aTestReset : boolean;
+
+  signal ac1Reset_n     : std_logic := '1';
+  signal ac3Reset_n     : std_logic := '1';
+  signal c3DataIn       : std_logic_vector( 95 downto 0) := (others => '0');
+  signal c3DataValidIn  : std_logic := '0';
+  signal c1ExpectedData : std_logic_vector(191 downto 0) := (others => '0');
+  signal c1DataOut      : std_logic_vector(191 downto 0) := (others => '0');
+  signal c1DataValidOut : std_logic;
 
   signal StopSim : boolean;
   constant kPer : time := 12 ns;
 
-  signal Clk1x: std_logic := '1';
-  signal Clk3x: std_logic := '1';
-  signal ac1Reset_n: std_logic := '1';
-  signal ac3Reset_n: std_logic := '1';
-  signal c3DataIn: std_logic_vector(95 downto 0) := (others => '0');
-  signal c3DataValidIn: std_logic := '0';
-  signal c1ExpectedData : std_logic_vector(191 downto 0) := (others => '0');
-  signal c1DataOut: std_logic_vector(191 downto 0) := (others => '0');
+  signal Clk1x : std_logic := '1';
+  signal Clk3x : std_logic := '1';
 
   procedure Clk3xWait(X : positive := 1) is
   begin
@@ -71,18 +68,17 @@ begin
   Clk1x <= not Clk1x after kPer/2 when not StopSim else '0';
   Clk3x <= not Clk3x after kPer/6 when not StopSim else '0';
 
-
-  --vhook adc_gearbox_2x4 dut
   dut: adc_gearbox_2x4
     port map (
-      Clk1x          => Clk1x,           --in  std_logic
-      Clk3x          => Clk3x,           --in  std_logic
-      ac1Reset_n     => ac1Reset_n,      --in  std_logic
-      ac3Reset_n     => ac3Reset_n,      --in  std_logic
-      c3DataIn       => c3DataIn,        --in  std_logic_vector(95:0)
-      c3DataValidIn  => c3DataValidIn,   --in  std_logic
-      c1DataOut      => c1DataOut,       --out std_logic_vector(191:0)
-      c1DataValidOut => c1DataValidOut); --out std_logic
+      Clk1x          => Clk1x,
+      Clk3x          => Clk3x,
+      ac1Reset_n     => ac1Reset_n,
+      ac3Reset_n     => ac3Reset_n,
+      c3DataIn       => c3DataIn,
+      c3DataValidIn  => c3DataValidIn,
+      c1DataOut      => c1DataOut,
+      c1DataValidOut => c1DataValidOut
+    );
 
   main: process
     procedure PhaseTest(WaitCycles : positive := 1) is
@@ -96,10 +92,10 @@ begin
       ac1Reset_n <= '1';
       ac3Reset_n <= '1';
 
-      -- This wait is in Clk3x domain. This is used to change phase in
-      -- which data valid is asserted with respect to Clk3x and Clk1x
-      -- rising edge. Wait an additional 12 Clk3x cycles for the output
-      -- data valid to be de-asserted.
+      -- This wait is in Clk3x domain. This is used to change phase in which
+      -- data valid is asserted with respect to Clk3x and Clk1x rising edge.
+      -- Wait an additional 12 Clk3x cycles for the output data valid to be
+      -- de-asserted.
       Clk3xWait(WaitCycles+12);
 
       -- De-asserting test reset will start data generation.
@@ -110,10 +106,10 @@ begin
     end procedure;
 
   begin
-    -- change phase between Clk1x and Clk3x. See details in the DUT.
-    -- The wait in each phase test is used to move the de-assertion
-    -- of data generation logic reset. By doing this, we can change
-    -- data valid assertion phase between Clk3x and Clk1x.
+    -- Change phase between Clk1x and Clk3x. See details in the DUT.
+    -- The wait in each phase test is used to move the de-assertion of data
+    -- generation logic reset. By doing this, we can change data valid
+    -- assertion phase between Clk3x and Clk1x.
     -- p0.
     PhaseTest(1);
 
@@ -142,7 +138,6 @@ begin
       c3DataValidIn <= '0';
     elsif rising_edge(Clk3x) then
 
-
       if dataCount < 2 then
         c3DataIn <= "0000000" & std_logic_vector(to_unsigned(tempQdata+1,17)) &
                     "0000000" & std_logic_vector(to_unsigned(tempIdata+1,17)) &
@@ -162,17 +157,18 @@ begin
   end process;
 
   -- Process to generate expected data that is used to verify the DUT output.
-  ExpectedData: process(Clk1x)
+  expected_data: process(Clk1x)
     variable tempQdata : integer := 1;
     variable tempIdata : integer := 128;
   begin
     if rising_edge(Clk1x) then
+
       if aTestReset and c1DataValidOut = '0' then
         tempQdata := 1;
         tempIdata := 128;
       elsif c1DataValidOut = '1' then
-        tempQdata := tempQdata +4;
-        tempIdata := tempIdata +4;
+        tempQdata := tempQdata+4;
+        tempIdata := tempIdata+4;
       end if;
       c1ExpectedData <= "0000000" & std_logic_vector(to_unsigned(tempQdata+3,17)) &
                         "0000000" & std_logic_vector(to_unsigned(tempIdata+3,17)) &
@@ -199,4 +195,3 @@ begin
   end process;
 
 end RTL;
-
