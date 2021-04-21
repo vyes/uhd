@@ -514,6 +514,9 @@ const std::string zbx_dboard_impl::get_tx_lo_source(
     const std::string& name, const size_t chan)
 {
     const fs_path fe_path = _get_frontend_path(TX_DIRECTION, chan);
+    if (!_tree->exists(fe_path / "ch" / name)) {
+        throw uhd::value_error("get_tx_lo_source(): Invalid LO name: " + name);
+    }
 
     const zbx_lo_source_t lo_source =
         _tree->access<zbx_lo_source_t>(fe_path / "ch" / name / "source").get();
@@ -524,6 +527,9 @@ const std::string zbx_dboard_impl::get_rx_lo_source(
     const std::string& name, const size_t chan)
 {
     const fs_path fe_path = _get_frontend_path(RX_DIRECTION, chan);
+    if (!_tree->exists(fe_path / "ch" / name)) {
+        throw uhd::value_error("get_rx_lo_source(): Invalid LO name: " + name);
+    }
 
     const zbx_lo_source_t lo_source =
         _tree->access<zbx_lo_source_t>(fe_path / "ch" / name / "source").get();
@@ -535,6 +541,9 @@ void zbx_dboard_impl::set_rx_lo_source(
 {
     RFNOC_LOG_TRACE("set_rx_lo_source(name=" << name << ", src=" << src << ")");
     const fs_path fe_path = _get_frontend_path(RX_DIRECTION, chan);
+    if (!_tree->exists(fe_path / "ch" / name)) {
+        throw uhd::value_error("set_rx_lo_source(): Invalid LO name: " + name);
+    }
 
     _tree->access<zbx_lo_source_t>(fe_path / "ch" / name / "source")
         .set(src == "internal" ? zbx_lo_source_t::internal : zbx_lo_source_t::external);
@@ -545,6 +554,9 @@ void zbx_dboard_impl::set_tx_lo_source(
 {
     RFNOC_LOG_TRACE("set_tx_lo_source(name=" << name << ", src=" << src << ")");
     const fs_path fe_path = _get_frontend_path(TX_DIRECTION, chan);
+    if (!_tree->exists(fe_path / "ch" / name)) {
+        throw uhd::value_error("set_tx_lo_source(): Invalid LO name: " + name);
+    }
 
     _tree->access<zbx_lo_source_t>(fe_path / "ch" / name / "source")
         .set(src == "internal" ? zbx_lo_source_t::internal : zbx_lo_source_t::external);
