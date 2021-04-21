@@ -119,7 +119,7 @@ module x4xx_qsfp_wrapper #(
   AxiLiteIf #(REG_DWIDTH,40)
     m_axi_mac[3:0] (s_axi.clk, s_axi.rst);
 
-  // AXI (Full) to drive data from DMA back to host memory
+  // AXI (Full) for DMA back to CPU memory
   AxiIf #(128,49)
     axi_hp_dma[3:0] (s_axi.clk, s_axi.rst);
 
@@ -161,7 +161,7 @@ module x4xx_qsfp_wrapper #(
 
 
   //---------------------------------------------------------------------------
-  // Map DMA Engine Masters to Host Memory Port
+  // Map DMA Engine Masters to CPU Memory Port
   //---------------------------------------------------------------------------
 
   // Everything Disabled

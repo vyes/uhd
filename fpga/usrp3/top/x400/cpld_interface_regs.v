@@ -1,12 +1,205 @@
 //
-// Copyright 2019 Ettus Research, A National Instruments Company
+// Copyright 2021 Ettus Research, A National Instruments Brand
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
 // Module: cpld_interface_regs
-// Description:
-// Basic Registers to inform software about version and capabilities
 //
+// Description:
+//
+//   Basic registers to inform software about version and capabilities.
+//
+// Parameters:
+//
+//   BASE_ADDRESS  : Base address for CtrlPort registers.
+//   NUM_ADDRESSES : Number of bytes of address space to use.
+//
+
+`default_nettype none
+
+
+module cpld_interface_regs #(
+  parameter BASE_ADDRESS  = 0,
+  parameter NUM_ADDRESSES = 128
+) (
+  input wire ctrlport_clk,
+  input wire ctrlport_rst,
+
+  // Request
+  input  wire        s_ctrlport_req_wr,
+  input  wire        s_ctrlport_req_rd,
+  input  wire [19:0] s_ctrlport_req_addr,
+  input  wire [31:0] s_ctrlport_req_data,
+  // Response
+  output reg         s_ctrlport_resp_ack,
+  output reg  [ 1:0] s_ctrlport_resp_status,
+  output reg  [31:0] s_ctrlport_resp_data,
+
+  // Configuration to the SPI master
+  output wire [15:0] mb_clock_divider,
+  output wire [15:0] db_clock_divider,
+
+  output reg         ipass_enable = 1'b0,
+
+  // Version (Constant)
+  output wire [95:0] version_info
+);
+
+  `include "regmap/cpld_interface_regmap_utils.vh"
+  `include "regmap/versioning_regs_regmap_utils.vh"
+  `include "regmap/versioning_utils.vh"
+  `include "../../lib/rfnoc/core/ctrlport.vh"
+
+  //----------------------------------------------------------
+  // Address calculation
+  //----------------------------------------------------------
+
+  wire address_in_range = (s_ctrlport_req_addr >= BASE_ADDRESS) &&
+                          (s_ctrlport_req_addr < BASE_ADDRESS + NUM_ADDRESSES);
+
+  //----------------------------------------------------------
+  // Static variables
+  //----------------------------------------------------------
+
+  localparam SIGNATURE_VALUE = 32'hCB1D1FAC;
+
+  //----------------------------------------------------------
+  // Internal registers
+  //----------------------------------------------------------
+  reg [SCRATCH_REGISTER_SIZE-1:0] scratch_reg;
+  reg [MB_DIVIDER_SIZE-1:0]       mb_divider_reg = 2;
+  reg [DB_DIVIDER_SIZE-1:0]       db_divider_reg = 5;
+
+  //----------------------------------------------------------
+  // Assign configuration signals
+  //----------------------------------------------------------
+
+  assign mb_clock_divider = mb_divider_reg;
+  assign db_clock_divider = db_divider_reg;
+
+  //----------------------------------------------------------
+  // Handling of ControlPort requests
+  //----------------------------------------------------------
+
+  always @(posedge ctrlport_clk) begin
+    // Reset internal registers and responses
+    if (ctrlport_rst) begin
+      scratch_reg            <= 0;
+      s_ctrlport_resp_ack    <= 1'b0;
+      s_ctrlport_resp_data   <= {32{1'bx}};
+      s_ctrlport_resp_status <= {2{1'bx}};
+
+  end else begin
+    // Write requests
+    if (s_ctrlport_req_wr) begin
+      // Always issue an ack and no data
+      s_ctrlport_resp_ack    <= 1'b1;
+      s_ctrlport_resp_data   <= {32{1'bx}};
+      s_ctrlport_resp_status <= CTRL_STS_OKAY;
+
+      case (s_ctrlport_req_addr)
+        BASE_ADDRESS + SCRATCH_REGISTER: begin
+          scratch_reg <= s_ctrlport_req_data;
+        end
+
+        BASE_ADDRESS + IPASS_CONTROL: begin
+          ipass_enable <= s_ctrlport_req_data[IPASS_ENABLE_TRANSFER];
+        end
+
+        BASE_ADDRESS + MOTHERBOARD_CPLD_DIVIDER: begin
+          mb_divider_reg <= s_ctrlport_req_data[MB_DIVIDER_MSB:MB_DIVIDER];
+        end
+
+        BASE_ADDRESS + DAUGHTERBOARD_CPLD_DIVIDER: begin
+          db_divider_reg <= s_ctrlport_req_data[DB_DIVIDER_MSB:DB_DIVIDER];
+        end
+
+        // Error on undefined address
+        default: begin
+          if (address_in_range) begin
+            s_ctrlport_resp_status <= CTRL_STS_CMDERR;
+
+          // No response if out of range
+          end else begin
+            s_ctrlport_resp_ack <= 1'b0;
+          end
+        end
+      endcase
+
+      // Read request
+      end else if (s_ctrlport_req_rd) begin
+        // Default assumption: valid request
+        s_ctrlport_resp_ack    <= 1'b1;
+        s_ctrlport_resp_status <= CTRL_STS_OKAY;
+
+        case (s_ctrlport_req_addr)
+          BASE_ADDRESS + SIGNATURE_REGISTER: begin
+            s_ctrlport_resp_data <= SIGNATURE_VALUE;
+          end
+
+          BASE_ADDRESS + SCRATCH_REGISTER: begin
+            s_ctrlport_resp_data <= scratch_reg;
+          end
+
+          BASE_ADDRESS + IPASS_CONTROL: begin
+            s_ctrlport_resp_data <= 32'h0;
+            s_ctrlport_resp_data[IPASS_ENABLE_TRANSFER] <= ipass_enable;
+          end
+
+          BASE_ADDRESS + MOTHERBOARD_CPLD_DIVIDER: begin
+            s_ctrlport_resp_data <= {{(CTRLPORT_DATA_W - MB_DIVIDER_SIZE){1'b0}}, mb_divider_reg};
+          end
+
+          BASE_ADDRESS + DAUGHTERBOARD_CPLD_DIVIDER: begin
+            s_ctrlport_resp_data <= {{(CTRLPORT_DATA_W - DB_DIVIDER_SIZE){1'b0}}, db_divider_reg};
+          end
+
+          // Error on undefined address
+          default: begin
+            s_ctrlport_resp_data <= {32{1'bx}};
+            if (address_in_range) begin
+              s_ctrlport_resp_status <= CTRL_STS_CMDERR;
+
+            // No response if out of range
+            end else begin
+              s_ctrlport_resp_ack <= 1'b0;
+            end
+          end
+        endcase
+
+      // No request
+      end else begin
+        s_ctrlport_resp_ack <= 1'b0;
+      end
+    end
+  end
+
+  //----------------------------------------------------------
+  // Version Info
+  //----------------------------------------------------------
+
+  // Version metadata. Constants come from auto-generated file
+  // versioning_regs_regmap_utils.vh.
+  assign version_info = build_component_versions(
+    CPLD_IFC_VERSION_LAST_MODIFIED_TIME,
+    build_version(
+      CPLD_IFC_OLDEST_COMPATIBLE_VERSION_MAJOR,
+      CPLD_IFC_OLDEST_COMPATIBLE_VERSION_MINOR,
+      CPLD_IFC_OLDEST_COMPATIBLE_VERSION_BUILD
+    ),
+    build_version(
+      CPLD_IFC_CURRENT_VERSION_MAJOR,
+      CPLD_IFC_CURRENT_VERSION_MINOR,
+      CPLD_IFC_CURRENT_VERSION_BUILD
+    )
+  );
+
+endmodule
+
+
+`default_nettype wire
+
+
 //XmlParse xml_on
 //<regmap name="VERSIONING_REGS_REGMAP">
 //  <group name="VERSIONING_CONSTANTS">
@@ -33,7 +226,7 @@
 //<regmap name="CPLD_INTERFACE_REGMAP" readablestrobes="false" generatevhdl="true" ettusguidelines="true">
 //  <group name="CPLD_INTERFACE_REGS">
 //    <info>
-//      Basic registers containing version and capabilites information.
+//      Basic registers containing version and capabilities information.
 //    </info>
 //
 //    <register name="SIGNATURE_REGISTER" offset="0x00" writable="false" size="32">
@@ -65,7 +258,7 @@
 //      Registers to control the SPI clock frequency of the CPLD interfaces.
 //      The resulting clock frequency is calculated by <math><mrow><mfrac><mrow><msub><mi>f</mi><mrow><mi>PRC</mi></mrow></msub></mrow><mrow><mn>2</mn><mrow><mo form="prefix">(</mo><mo>divider</mi><mo>+</mo><mn>1</mn><mo form="postfix">)</mo></mrow></mrow></mfrac></mrow></math>.
 //      <br>
-//      Note that the Pll Reference Clock (PRC) is depending on the RF clocks.
+//      Note that the PLL Reference Clock (PRC) is depending on the RF clocks.
 //    </info>
 //
 //    <register name="MOTHERBOARD_CPLD_DIVIDER" offset="0x20" size="32">
@@ -90,172 +283,3 @@
 //  </group>
 //</regmap>
 //XmlParse xml_off
-
-module cpld_interface_regs #(
-  parameter BASE_ADDRESS = 0,
-  parameter NUM_ADDRESSES = 128
-)(
-  input wire ctrlport_clk,
-  input wire ctrlport_rst,
-
-  // Request
-  input  wire        s_ctrlport_req_wr,
-  input  wire        s_ctrlport_req_rd,
-  input  wire [19:0] s_ctrlport_req_addr,
-  input  wire [31:0] s_ctrlport_req_data,
-  // Response
-  output reg         s_ctrlport_resp_ack,
-  output reg  [ 1:0] s_ctrlport_resp_status,
-  output reg  [31:0] s_ctrlport_resp_data,
-
-  // configuration to the SPI master
-  output wire [15:0] mb_clock_divider,
-  output wire [15:0] db_clock_divider,
-
-  output reg         ipass_enable = 1'b0,
-
-  // Versioning (Constant)
-  output wire [95:0] version_info
-);
-
-`include "regmap/cpld_interface_regmap_utils.vh"
-`include "regmap/versioning_regs_regmap_utils.vh"
-`include "regmap/versioning_utils.vh"
-`include "../../lib/rfnoc/core/ctrlport.vh"
-
-//----------------------------------------------------------
-// Address calculation
-//----------------------------------------------------------
-wire address_in_range = (s_ctrlport_req_addr >= BASE_ADDRESS) && (s_ctrlport_req_addr < BASE_ADDRESS + NUM_ADDRESSES);
-
-//----------------------------------------------------------
-// Static variables
-//----------------------------------------------------------
-localparam SIGNATURE_VALUE = 32'hCB1D1FAC;
-
-//----------------------------------------------------------
-// Internal registers
-//----------------------------------------------------------
-reg [SCRATCH_REGISTER_SIZE-1:0] scratch_reg;
-reg [MB_DIVIDER_SIZE-1:0]       mb_divider_reg = 2;
-reg [DB_DIVIDER_SIZE-1:0]       db_divider_reg = 5;
-
-//----------------------------------------------------------
-// Assigne configuration signals
-//----------------------------------------------------------
-assign mb_clock_divider = mb_divider_reg;
-assign db_clock_divider = db_divider_reg;
-
-//----------------------------------------------------------
-// Handling of ControlPort requests
-//----------------------------------------------------------
-always @(posedge ctrlport_clk) begin
-  // reset internal registers and responses
-  if (ctrlport_rst) begin
-    scratch_reg <= 0;
-    s_ctrlport_resp_ack <= 1'b0;
-    s_ctrlport_resp_data <= {32{1'bx}};
-    s_ctrlport_resp_status <= {2{1'bx}};
-
-  // write requests
-end else begin
-  if (s_ctrlport_req_wr) begin
-    // always issue an ack and no data
-    s_ctrlport_resp_ack <= 1'b1;
-    s_ctrlport_resp_data <= {32{1'bx}};
-    s_ctrlport_resp_status <= CTRL_STS_OKAY;
-
-    case (s_ctrlport_req_addr)
-      BASE_ADDRESS + SCRATCH_REGISTER: begin
-        scratch_reg <= s_ctrlport_req_data;
-      end
-
-      BASE_ADDRESS + IPASS_CONTROL: begin
-        ipass_enable <= s_ctrlport_req_data[IPASS_ENABLE_TRANSFER];
-      end
-
-      BASE_ADDRESS + MOTHERBOARD_CPLD_DIVIDER: begin
-        mb_divider_reg <= s_ctrlport_req_data[MB_DIVIDER_MSB:MB_DIVIDER];
-      end
-
-      BASE_ADDRESS + DAUGHTERBOARD_CPLD_DIVIDER: begin
-        db_divider_reg <= s_ctrlport_req_data[DB_DIVIDER_MSB:DB_DIVIDER];
-      end
-
-      // error on undefined address
-      default: begin
-        if (address_in_range) begin
-          s_ctrlport_resp_status <= CTRL_STS_CMDERR;
-
-        // no response if out of range
-        end else begin
-          s_ctrlport_resp_ack <= 1'b0;
-        end
-      end
-    endcase
-
-    // read request
-    end else if (s_ctrlport_req_rd) begin
-      // default assumption: valid request
-      s_ctrlport_resp_ack <= 1'b1;
-      s_ctrlport_resp_status <= CTRL_STS_OKAY;
-
-      case (s_ctrlport_req_addr)
-        BASE_ADDRESS + SIGNATURE_REGISTER: begin
-          s_ctrlport_resp_data <= SIGNATURE_VALUE;
-        end
-
-        BASE_ADDRESS + SCRATCH_REGISTER: begin
-          s_ctrlport_resp_data <= scratch_reg;
-        end
-
-        BASE_ADDRESS + IPASS_CONTROL: begin
-          s_ctrlport_resp_data <= 32'h0;
-          s_ctrlport_resp_data[IPASS_ENABLE_TRANSFER] <= ipass_enable;
-        end
-
-        BASE_ADDRESS + MOTHERBOARD_CPLD_DIVIDER: begin
-          s_ctrlport_resp_data <= {{(CTRLPORT_DATA_W - MB_DIVIDER_SIZE){1'b0}}, mb_divider_reg};
-        end
-
-        BASE_ADDRESS + DAUGHTERBOARD_CPLD_DIVIDER: begin
-          s_ctrlport_resp_data <= {{(CTRLPORT_DATA_W - DB_DIVIDER_SIZE){1'b0}}, db_divider_reg};
-        end
-
-        // error on undefined address
-        default: begin
-          s_ctrlport_resp_data <= {32{1'bx}};
-          if (address_in_range) begin
-            s_ctrlport_resp_status <= CTRL_STS_CMDERR;
-
-          // no response if out of range
-          end else begin
-            s_ctrlport_resp_ack <= 1'b0;
-          end
-        end
-      endcase
-
-    // no request
-    end else begin
-      s_ctrlport_resp_ack <= 1'b0;
-    end
-  end
-end
-
-//----------------------------------------------------------
-// Versioning
-//----------------------------------------------------------
-
-// Version metadata, constants come from auto-generated versioning_regs_regmap_utils.vh
-assign version_info = build_component_versions(
-  CPLD_IFC_VERSION_LAST_MODIFIED_TIME,
-  build_version(
-    CPLD_IFC_OLDEST_COMPATIBLE_VERSION_MAJOR,
-    CPLD_IFC_OLDEST_COMPATIBLE_VERSION_MINOR,
-    CPLD_IFC_OLDEST_COMPATIBLE_VERSION_BUILD),
-  build_version(
-    CPLD_IFC_CURRENT_VERSION_MAJOR,
-    CPLD_IFC_CURRENT_VERSION_MINOR,
-    CPLD_IFC_CURRENT_VERSION_BUILD));
-
-endmodule

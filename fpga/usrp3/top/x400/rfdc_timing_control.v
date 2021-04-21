@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Ettus Research, a National Instruments Brand
+// Copyright 2021 Ettus Research, a National Instruments Brand
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
@@ -18,64 +18,15 @@
 //   NUM_DBOARDS : Number of daughter boards to support
 //
 
-
-//XmlParse xml_on
-//
-//<regmap name="RADIO_CTRLPORT_REGMAP" readablestrobes="false" generatevhdl="true" ettusguidelines="true">
-//  <group name="RADIO_CTRLPORT_WINDOWS">
-//    <info>Each radio's CtrlPort peripheral interface is divided into the
-//    following memory spaces. Note that the CtrlPort peripheral interface
-//    starts at offset 0x80000 in the RFNoC Radio block's register space.</info>
-//    <window name="DB_WINDOW"        offset="0x00000" size="0x08000">
-//      <info>Daughterboard GPIO interface. Register access within this space
-//      is directed to the associated daughterboard CPLD.</info>
-//    </window>
-//    <window name="RFDC_TIMING_WINDOW" offset="0x08000" size="0x08000" targetregmap="RFDC_TIMING_REGMAP">
-//      <info>RFDC timing control interface.</info>
-//    </window>
-//  </group>
-//</regmap>
-//
-//<regmap name="RFDC_TIMING_REGMAP" readablestrobes="false" generatevhdl="true" ettusguidelines="true">
-//  <group name="RFDC_TIMING_REGS">
-//    <register name="NCO_RESET_REG" offset="0x00" size="32" readable="true" writable="true">
-//      <info>NCO reset control register.</info>
-//      <bitfield name="NCO_RESET_START" range="0" readable="false" strobe="true">
-//        <info>Write a 1 to this bit to start a reset the RFDC's NCO.</info>
-//      </bitfield>
-//      <bitfield name="NCO_RESET_DONE" range="1" writable="false">
-//        <info>When 1, indicates that the NCO reset has completed.</info>
-//      </bitfield>
-//    </register>
-//    <register name="GEARBOX_RESET_REG" offset="0x04" size="32" readable="true" writable="true">
-//      <info>Gearbox reset control register.</info>
-//      <bitfield name="ADC_RESET" range="0" readable="false" strobe="true">
-//        <info>
-//          This reset is for the gearbox on the ADC data path that is used to
-//          move data from one clock domain to another outside the RFDC. Write
-//          a 1 to this bit to send a reset pulse to the ADC gearbox.
-//        </info>
-//      </bitfield>
-//      <bitfield name="DAC_RESET" range="1" readable="false" strobe="true">
-//        <info>
-//          This reset is for the gearbox on the DAC data path that is used to
-//          move data from one clock domain to another outside the RFDC. Write
-//          a 1 to this bit to send a reset pulse to the DAC gearbox.
-//        </info>
-//      </bitfield>
-//    </register>
-//  </group>
-//</regmap>
-//
-//XmlParse xml_off
+`default_nettype none
 
 
 module rfdc_timing_control #(
   parameter NUM_DBOARDS = 2
 ) (
   // Clocks and resets
-  input clk,
-  input rst,
+  input wire clk,
+  input wire rst,
 
   // Time
   input wire [63:0] time_now,
@@ -170,9 +121,9 @@ module rfdc_timing_control #(
       );
 
 
-      //-------------------------------------------------------------------------
+      //-----------------------------------------------------------------------
       // RF Reset Control
-      //-------------------------------------------------------------------------
+      //-----------------------------------------------------------------------
 
       wire [  1-1:0] nco_ctrlport_req_wr;
       wire [  1-1:0] nco_ctrlport_req_rd;
@@ -251,7 +202,7 @@ module rfdc_timing_control #(
           end
         end
       end
-    
+
     end
   endgenerate
 
@@ -279,3 +230,57 @@ module rfdc_timing_control #(
   end
 
 endmodule
+
+
+`default_nettype wire
+
+
+//XmlParse xml_on
+//
+//<regmap name="RADIO_CTRLPORT_REGMAP" readablestrobes="false" generatevhdl="true" ettusguidelines="true">
+//  <group name="RADIO_CTRLPORT_WINDOWS">
+//    <info>Each radio's CtrlPort peripheral interface is divided into the
+//    following memory spaces. Note that the CtrlPort peripheral interface
+//    starts at offset 0x80000 in the RFNoC Radio block's register space.</info>
+//    <window name="DB_WINDOW"        offset="0x00000" size="0x08000">
+//      <info>Daughterboard GPIO interface. Register access within this space
+//      is directed to the associated daughterboard CPLD.</info>
+//    </window>
+//    <window name="RFDC_TIMING_WINDOW" offset="0x08000" size="0x08000" targetregmap="RFDC_TIMING_REGMAP">
+//      <info>RFDC timing control interface.</info>
+//    </window>
+//  </group>
+//</regmap>
+//
+//<regmap name="RFDC_TIMING_REGMAP" readablestrobes="false" generatevhdl="true" ettusguidelines="true">
+//  <group name="RFDC_TIMING_REGS">
+//    <register name="NCO_RESET_REG" offset="0x00" size="32" readable="true" writable="true">
+//      <info>NCO reset control register.</info>
+//      <bitfield name="NCO_RESET_START" range="0" readable="false" strobe="true">
+//        <info>Write a 1 to this bit to start a reset the RFDC's NCO.</info>
+//      </bitfield>
+//      <bitfield name="NCO_RESET_DONE" range="1" writable="false">
+//        <info>When 1, indicates that the NCO reset has completed.</info>
+//      </bitfield>
+//    </register>
+//    <register name="GEARBOX_RESET_REG" offset="0x04" size="32" readable="true" writable="true">
+//      <info>Gearbox reset control register.</info>
+//      <bitfield name="ADC_RESET" range="0" readable="false" strobe="true">
+//        <info>
+//          This reset is for the gearbox on the ADC data path that is used to
+//          move data from one clock domain to another outside the RFDC. Write
+//          a 1 to this bit to send a reset pulse to the ADC gearbox.
+//        </info>
+//      </bitfield>
+//      <bitfield name="DAC_RESET" range="1" readable="false" strobe="true">
+//        <info>
+//          This reset is for the gearbox on the DAC data path that is used to
+//          move data from one clock domain to another outside the RFDC. Write
+//          a 1 to this bit to send a reset pulse to the DAC gearbox.
+//        </info>
+//      </bitfield>
+//    </register>
+//  </group>
+//</regmap>
+//
+//XmlParse xml_off
