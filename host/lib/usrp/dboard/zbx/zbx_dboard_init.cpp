@@ -543,14 +543,15 @@ void zbx_dboard_impl::_init_antenna_prop_tree(uhd::property_tree::sptr subtree,
         default_ant,
         AUTO_RESOLVE_ON_WRITE);
 
-    subtree->access<std::string>(fe_path / "antenna" / "value").set_coercer([](const std::string& requested_antenna) {
-        if (requested_antenna == "TX/RX") {
-        return std::string("TX/RX0");
-    } else if (requested_antenna == "RX2") {
-        return std::string("RX1");
-    }
-    return requested_antenna;
-    });
+    subtree->access<std::string>(fe_path / "antenna" / "value")
+        .set_coercer([](const std::string& requested_antenna) {
+            if (requested_antenna == "TX/RX") {
+                return std::string("TX/RX0");
+            } else if (requested_antenna == "RX2") {
+                return std::string("RX1");
+            }
+            return requested_antenna;
+        });
 
     subtree->create<std::vector<std::string>>(fe_path / "antenna" / "options")
         .set(trx == TX_DIRECTION ? get_tx_antennas(chan_idx) : get_rx_antennas(chan_idx))
