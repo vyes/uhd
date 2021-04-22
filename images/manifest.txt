@@ -2,10 +2,9 @@
 # Target    hash    url     SHA256
 
 # X400-Series
-x4xx_fpga_default      uhd-eb164ce       x4xx/uhd-eb164ce/x4xx_fpga_default-geb164ce.zip             c21a578f815278a1df2f102585a13c99387863d031e7e7450407e0741e710154
-x4xx_lv_fpga_default   uhd-e4230e30da15  x4xx/uhd-e4230e30da15/x4xx_lv_fpga_default-20210216.zip     3194c25617f4a199b6210e9026cbf17c7cb347bb12f224661abf159f707dd8fc
-x4xx_x410_cpld_default uhd-de5b4e9       x4xx/uhd-de5b4e9/x4xx_x410_cpld_default-gde5b4e9.zip        d481293c4a23a7894f44c3e510593deab313957eacfe1b04105913a225d73706
-x4xx_zbx_cpld_default  uhd-de5b4e9       x4xx/uhd-de5b4e9/x4xx_zbx_cpld_default-gde5b4e9.zip         b85c76f3ca1e995637f306b00c5b6e803d162e7bd8e5aa1f40670481539cf5b8
+x4xx_fpga_default      uhd-e86fc51       x4xx/uhd-e86fc51/x4xx_fpga_default-ge86fc51.zip             4c6ab7bf4d18e3bad61e33c70941de2c2e7aba79b8dab5a269859f63c57faee7
+x4xx_x410_cpld_default uhd-ee5696e       x4xx/uhd-ee5696e/x4xx_x410_cpld_default-gee5696e.zip        d481293c4a23a7894f44c3e510593deab313957eacfe1b04105913a225d73706
+x4xx_zbx_cpld_default  uhd-e86fc51       x4xx/uhd-e86fc51/x4xx_zbx_cpld_default-ge86fc51.zip         78c05518826cc5b252c8c1588fa9e34edd27316229dc77f01e9f1a2cfd15d17b
 
 # X300-Series
 x3xx_x310_fpga_default          uhd-be53058       x3xx/uhd-be53058/x3xx_x310_fpga_default-gbe53058.zip                  baa6082515704090ce701cb89dddcc2c99b42fcdb72648f0d465520aa11cfc8b
