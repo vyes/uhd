@@ -602,11 +602,11 @@ class X4XXBIST(bist.UsrpBIST):
                 'write_patterns': list(patterns),
                 'read_patterns': list(patterns),
             }
-        from usrp_mpm.periph_manager import x4xx, x4xx_periphs
+        from usrp_mpm.periph_manager import x4xx, x4xx_periphs, x4xx_mb_cpld
         mboard_regs_control = x4xx_periphs.MboardRegsControl(
             x4xx.x4xx.mboard_regs_label, self.log)
         cpld_spi_node = dt_symbol_get_spidev('mb_cpld')
-        cpld_control = x4xx_periphs.MboardCPLD(cpld_spi_node, self.log)
+        cpld_control = x4xx_mb_cpld.MboardCPLD(cpld_spi_node, self.log)
         gpio_diocontrol = x4xx_periphs.DioControl(
             mboard_regs_control,
             cpld_control,
