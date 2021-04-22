@@ -459,7 +459,7 @@ void zbx_rx_programming_expert::resolve()
         // If using the TX/RX terminal, only configure the ATR RX state since the
         // state of the switch at other times is controlled by TX
         // TODO: Remove ATR_ADDR_0X once ATR state changes work
-        if (!is_trx_sma(_antenna) || idx == ATR_ADDR_RX || idx == ATR_ADDR_0X) {
+        if (_antenna != "TX/RX0" || idx == ATR_ADDR_RX || idx == ATR_ADDR_0X) {
             _cpld->set_rx_antenna_switches(_chan, idx, _antenna);
         }
 
@@ -477,7 +477,7 @@ void zbx_rx_programming_expert::_update_leds()
         return;
     }
     // We default to the RX2 LED for all RX antenna values that are not TX/RX
-    const bool rx_on_trx = is_trx_sma(_antenna);
+    const bool rx_on_trx = (_antenna == "TX/RX0");
     // clang-format off
     // G==Green, R==Red                RX2         TX/RX-G    TX/RX-R
     _cpld->set_leds(_chan, ATR_ADDR_0X, false,      false,     false);

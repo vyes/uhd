@@ -149,18 +149,6 @@ static const std::vector<std::string> ZBX_RX_ANTENNAS = {
     "TX/RX0", "TX/RX", "RX1", "RX2", "CAL_LOOPBACK", "TERMINATION"};
 static const std::vector<std::string> ZBX_TX_ANTENNAS = {"TX/RX0", "TX/RX", "CAL_LOOPBACK"};
 
-
-// Supported names for antenna connector
-inline bool is_trx_sma(const std::string& antenna)
-{
-    return (antenna == "TX/RX" || antenna == "TX/RX0");
-}
-
-inline bool is_rx_sma(const std::string& antenna)
-{
-    return (antenna == "RX2" || antenna == "RX1");
-}
-
 //! Low-band LO
 static constexpr char ZBX_LO1[] = "LO1";
 //! LO at 2nd mixer
