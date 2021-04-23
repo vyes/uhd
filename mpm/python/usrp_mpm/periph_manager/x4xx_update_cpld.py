@@ -15,7 +15,7 @@ import time
 from usrp_mpm.mpmlog import get_logger
 from usrp_mpm.sys_utils.sysfs_gpio import GPIOBank
 from usrp_mpm.sys_utils.udev import dt_symbol_get_spidev
-from usrp_mpm.periph_manager.x4xx_periphs import MboardCPLD
+from usrp_mpm.periph_manager.x4xx_mb_cpld import MboardCPLD
 from usrp_mpm.periph_manager.x4xx import x4xx
 from usrp_mpm.chips.max10_cpld_flash_ctrl import Max10CpldFlashCtrl
 
