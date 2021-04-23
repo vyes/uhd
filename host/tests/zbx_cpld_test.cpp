@@ -79,7 +79,7 @@ BOOST_FIXTURE_TEST_CASE(zbx_cpld_ctrl_test, zbx_cpld_fixture)
 
 BOOST_FIXTURE_TEST_CASE(zbx_tx_amp_test, zbx_cpld_fixture)
 {
-    cpld.set_tx_antenna_switches(0, 0, "TX/RX0", tx_amp::HIGHBAND);
+    cpld.set_tx_antenna_switches(0, 0, "TX/RX", tx_amp::HIGHBAND);
     BOOST_CHECK(tx_amp::HIGHBAND == cpld.get_tx_amp_settings(0, 0, false));
     mock_reg_iface.memory[0x2000] = 0;
     BOOST_CHECK(tx_amp::HIGHBAND == cpld.get_tx_amp_settings(0, 0, false));
