@@ -509,8 +509,11 @@ class x4xx(ZynqComponents, PeriphManagerBase):
         cond.release()
         self.log.trace("Terminating monitor loop.")
 
-    def _check_rfdc_powered(self):
-        if not self._rfdc_powered:
+    def _assert_rfdc_powered(self):
+        """
+        Assert that RFdc power is enabled, throw RuntimeError otherwise.
+        """
+        if not self._rfdc_powered.get():
             err_msg = "RFDC is not powered on"
             self.log.error(err_msg)
             raise RuntimeError(err_msg)
@@ -564,7 +567,7 @@ class x4xx(ZynqComponents, PeriphManagerBase):
         self.cpld_control.trace_git_hash()
 
         # Init clocking after CPLD as the SPLL communication is relying on it.
-        self._check_rfdc_powered()
+        self._assert_rfdc_powered()
         self._init_ref_clock_and_time(args)
         self._init_meas_clock()
         self.cpld_control.enable_pll_ref_clk()
