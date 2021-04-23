@@ -72,10 +72,10 @@ namespace uhd { namespace usrp { namespace zbx {
 namespace {
 
 std::string canonicalize_antenna(std::string antenna) {
-    if (antenna == "TX/RX0") {
-        return "TX/RX";
-    } else if (antenna == "RX1") {
-        return "RX2";
+    if (antenna == "TX/RX") {
+        return "TX/RX0";
+    } else if (antenna == "RX2") {
+        return "RX1";
     }
     return antenna;
 }
