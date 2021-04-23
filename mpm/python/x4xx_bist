@@ -154,7 +154,7 @@ class X4XXBIST(bist.UsrpBIST):
         If we have an OSS bitfile, we need to return a mcr that the clkaux
         lmk can lock to. (Data clock rate of 122.88MHz)
         """
-        from usrp_mpm.periph_manager import x4xx, x4xx_periphs
+        from usrp_mpm.periph_manager import x4xx, x4xx_periphs, x4xx_rfdc_regs
 
         mboard_regs_control = x4xx_periphs.MboardRegsControl(
             x4xx.x4xx.mboard_regs_label, self.log)
@@ -166,7 +166,7 @@ class X4XXBIST(bist.UsrpBIST):
                 'x410',
             )
 
-        rdfc_regs_control = x4xx_periphs.RfdcRegsControl(
+        rdfc_regs_control = x4xx_rfdc_regs.RfdcRegsControl(
             x4xx.x4xx.rfdc_regs_label, self.log)
         rfdc_resamp, halfband = rdfc_regs_control.get_rfdc_resampling_factor(0)
         mcr = 122880000 * (8 / rfdc_resamp)
@@ -271,8 +271,8 @@ class X4XXBIST(bist.UsrpBIST):
         assert 'ref_clock_mboard' in self.tests_to_run
         if self.args.dry_run:
             return True, {'ref_locked': True}
-        from usrp_mpm.periph_manager import x4xx, x4xx_periphs
-        rdfc_regs_control = x4xx_periphs.RfdcRegsControl(
+        from usrp_mpm.periph_manager import x4xx, x4xx_rfdc_regs
+        rdfc_regs_control = x4xx_rfdc_regs.RfdcRegsControl(
             x4xx.x4xx.rfdc_regs_label, self.log)
         rfdc_resamp, fpga_halfband = rdfc_regs_control.get_rfdc_resampling_factor(0)
         mcrs_to_test = []
