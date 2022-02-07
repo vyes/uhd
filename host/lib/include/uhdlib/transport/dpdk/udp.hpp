@@ -58,7 +58,7 @@ inline void fill_rte_ipv4_hdr(struct rte_mbuf* mbuf,
     ip_hdr->src_addr        = port->get_ipv4();
     ip_hdr->dst_addr        = dst_rte_ipv4_addr;
 
-    mbuf->ol_flags = PKT_TX_IP_CKSUM | PKT_TX_IPV4;
+    mbuf->ol_flags = RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_IPV4;
     mbuf->l2_len   = sizeof(struct rte_ether_hdr);
     mbuf->l3_len   = sizeof(struct rte_ipv4_hdr);
     mbuf->pkt_len  = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + payload_len;

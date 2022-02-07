@@ -122,8 +122,11 @@ public:
         size_t user_buff_size = boost::asio::buffer_size(user_buff);
         uint8_t* user_data    = boost::asio::buffer_cast<uint8_t*>(user_buff);
 
+        //UHD_LOG_INFO("dpdk_simple", "recv");
+
         auto buff = _recv_io->get_recv_buff(static_cast<int32_t>(timeout * 1e3));
         if (!buff) {
+            //UHD_LOG_INFO("dpdk_simple", "buff==NULL");
             return 0;
         }
 
@@ -140,6 +143,8 @@ public:
             UHD_LOG_WARNING("DPDK", "Truncating recv packet");
         }
         std::memcpy(user_data, buff->data(), copy_len);
+
+        //UHD_LOGGER_INFO("dpdk_simple") << "recv copy_len=" << copy_len;
 
         // Housekeeping
         _recv_io->release_recv_buff(std::move(buff));

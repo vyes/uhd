@@ -83,24 +83,15 @@ dpdk_port::dpdk_port(port_id_t port,
     /* Set MTU and IPv4 address */
     int retval;
 
-    retval = rte_eth_dev_set_mtu(_port, _mtu);
-    if (retval) {
-        uint16_t actual_mtu;
-        UHD_LOGGER_WARNING("DPDK")
-            << boost::format("Port %d: Could not set mtu to %d") % _port % _mtu;
-        rte_eth_dev_get_mtu(_port, &actual_mtu);
-        UHD_LOGGER_WARNING("DPDK")
-            << boost::format("Port %d: Current mtu=%d") % _port % actual_mtu;
-        _mtu = actual_mtu;
-    }
-
     separate_rte_ipv4_addr(rte_ipv4_address, _ipv4, _netmask);
 
+    UHD_LOGGER_INFO("DPDK") << "init";
+    
     /* Set hardware offloads */
     struct rte_eth_dev_info dev_info;
     rte_eth_dev_info_get(_port, &dev_info);
-    uint64_t rx_offloads = DEV_RX_OFFLOAD_IPV4_CKSUM;
-    uint64_t tx_offloads = DEV_TX_OFFLOAD_IPV4_CKSUM;
+    uint64_t rx_offloads = RTE_ETH_RX_OFFLOAD_IPV4_CKSUM;
+    uint64_t tx_offloads = RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
     if ((dev_info.rx_offload_capa & rx_offloads) != rx_offloads) {
         UHD_LOGGER_ERROR("DPDK") << boost::format("%d: Only supports RX offloads 0x%0llx")
                                         % _port % dev_info.rx_offload_capa;
@@ -112,6 +103,17 @@ dpdk_port::dpdk_port(port_id_t port,
         throw uhd::runtime_error("DPDK: Missing required TX offloads");
     }
 
+/*
+    uint32_t eth_overhead;
+    if (dev_info.max_mtu != UINT16_MAX && dev_info.max_rx_pktlen > dev_info.max_mtu) {
+		eth_overhead = dev_info.max_rx_pktlen - dev_info.max_mtu;
+    } else {
+		eth_overhead = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+    }
+    UHD_LOGGER_INFO("DPDK") << boost::format("dev_info.max_mtu=%d dev_info.max_rx_pktlen=%d eth_overhead=%d")
+                                        % dev_info.max_mtu % dev_info.max_rx_pktlen % eth_overhead;
+*/
+
     // Check number of available queues
     if (dev_info.max_rx_queues < num_queues || dev_info.max_tx_queues < num_queues) {
         _num_queues = std::min(dev_info.max_rx_queues, dev_info.max_tx_queues);
@@ -122,8 +124,17 @@ dpdk_port::dpdk_port(port_id_t port,
     }
 
     struct rte_eth_conf port_conf   = {};
-    port_conf.rxmode.offloads       = rx_offloads | DEV_RX_OFFLOAD_JUMBO_FRAME;
-    port_conf.rxmode.max_rx_pkt_len = _mtu;
+    #ifdef DEV_RX_OFFLOAD_JUMBO_FRAME
+        port_conf.rxmode.offloads       = rx_offloads | DEV_RX_OFFLOAD_JUMBO_FRAME;
+    #else
+        port_conf.rxmode.offloads       = rx_offloads;
+    #endif
+    #if RTE_VER_YEAR > 21 || (RTE_VER_YEAR == 21 && RTE_VER_MONTH == 11)
+//        port_conf.rxmode.mtu            = _mtu - eth_overhead;
+        port_conf.rxmode.mtu            = _mtu;
+    #else
+        port_conf.rxmode.max_rx_pkt_len = _mtu;
+    #endif
     port_conf.txmode.offloads       = tx_offloads;
     port_conf.intr_conf.lsc         = 1;
 
@@ -131,6 +142,18 @@ dpdk_port::dpdk_port(port_id_t port,
     if (retval != 0) {
         UHD_LOG_ERROR("DPDK", "Failed to configure the device");
         throw uhd::runtime_error("DPDK: Failed to configure the device");
+    }
+
+//    retval = rte_eth_dev_set_mtu(_port, _mtu - eth_overhead);
+    retval = rte_eth_dev_set_mtu(_port, _mtu);
+    if (retval) {
+        uint16_t actual_mtu;
+        UHD_LOGGER_WARNING("DPDK")
+            << boost::format("Port %d: Could not set mtu to %d") % _port % _mtu;
+        rte_eth_dev_get_mtu(_port, &actual_mtu);
+        UHD_LOGGER_WARNING("DPDK")
+            << boost::format("Port %d: Current mtu=%d") % _port % actual_mtu;
+        _mtu = actual_mtu;
     }
 
     /* Set descriptor ring sizes */
@@ -187,6 +210,8 @@ dpdk_port::dpdk_port(port_id_t port,
             throw uhd::runtime_error("DPDK: Failure to init TX queue");
         }
     }
+
+    //throw uhd::runtime_error("DPDK: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
     /* TODO: Enable multiple queues (only support 1 right now) */
 
@@ -266,8 +291,13 @@ int dpdk_port::_arp_reply(queue_id_t queue_id, struct rte_arp_hdr* arp_req)
     hdr       = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr*);
     arp_frame = (struct rte_arp_hdr*)&hdr[1];
 
-    rte_ether_addr_copy(&arp_req->arp_data.arp_sha, &hdr->d_addr);
-    rte_ether_addr_copy(&_mac_addr, &hdr->s_addr);
+    #if RTE_VER_YEAR > 21 || (RTE_VER_YEAR == 21 && RTE_VER_MONTH == 11)
+        rte_ether_addr_copy(&arp_req->arp_data.arp_sha, &hdr->dst_addr);
+        rte_ether_addr_copy(&_mac_addr, &hdr->src_addr);
+    #else
+        rte_ether_addr_copy(&arp_req->arp_data.arp_sha, &hdr->d_addr);
+        rte_ether_addr_copy(&_mac_addr, &hdr->s_addr);
+    #endif
     hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP);
 
     arp_frame->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
@@ -277,7 +307,11 @@ int dpdk_port::_arp_reply(queue_id_t queue_id, struct rte_arp_hdr* arp_req)
     arp_frame->arp_opcode  = rte_cpu_to_be_16(RTE_ARP_OP_REPLY);
     rte_ether_addr_copy(&_mac_addr, &arp_frame->arp_data.arp_sha);
     arp_frame->arp_data.arp_sip = _ipv4;
-    rte_ether_addr_copy(&hdr->d_addr, &arp_frame->arp_data.arp_tha);
+    #if RTE_VER_YEAR > 21 || (RTE_VER_YEAR == 21 && RTE_VER_MONTH == 11)
+        rte_ether_addr_copy(&hdr->dst_addr, &arp_frame->arp_data.arp_tha);
+    #else
+        rte_ether_addr_copy(&hdr->d_addr, &arp_frame->arp_data.arp_tha);
+    #endif
     arp_frame->arp_data.arp_tip = arp_req->arp_data.arp_sip;
 
     mbuf->pkt_len  = 42;
@@ -619,7 +653,8 @@ struct rte_mempool* dpdk_ctx::_get_rx_pktbuf_pool(
     unsigned int cpu_socket, size_t num_bufs)
 {
     if (!_rx_pktbuf_pools.at(cpu_socket)) {
-        const int mbuf_size = _mtu + RTE_PKTMBUF_HEADROOM;
+        const int mbuf_size = _mtu + RTE_PKTMBUF_HEADROOM +
+        RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
         char name[32];
         snprintf(name, sizeof(name), "rx_mbuf_pool_%u", cpu_socket);
         _rx_pktbuf_pools[cpu_socket] = rte_pktmbuf_pool_create(name,
@@ -640,7 +675,8 @@ struct rte_mempool* dpdk_ctx::_get_tx_pktbuf_pool(
     unsigned int cpu_socket, size_t num_bufs)
 {
     if (!_tx_pktbuf_pools.at(cpu_socket)) {
-        const int mbuf_size = _mtu + RTE_PKTMBUF_HEADROOM;
+        const int mbuf_size = _mtu + RTE_PKTMBUF_HEADROOM +
+        RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
         char name[32];
         snprintf(name, sizeof(name), "tx_mbuf_pool_%u", cpu_socket);
         _tx_pktbuf_pools[cpu_socket] = rte_pktmbuf_pool_create(

@@ -235,6 +235,7 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" OR
     add_definitions(-Wall)
     add_definitions(-Wextra)
     add_definitions(-Wsign-compare)
+    add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
     #add_definitions(-Wconversion)
     #add_definitions(-pedantic)
     #add_definitions(-ansi)

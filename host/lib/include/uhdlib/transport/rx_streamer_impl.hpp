@@ -140,6 +140,8 @@ public:
         const double timeout,
         const bool one_packet) override
     {
+        //UHD_LOGGER_INFO("rx_streamer_impl") << "recv";
+
         if (!_all_chans_connected) {
             throw uhd::runtime_error("[rx_stream] Attempting to call recv() before all "
                                      "channels are connected!");

@@ -31,6 +31,7 @@ set(example_sources
     sync_to_gps.cpp
     rfnoc_nullsource_ce_rx.cpp
     rfnoc_rx_to_file.cpp
+    rfnoc_dpdk_rx_to_gpu.cpp
     rfnoc_radio_loopback.cpp
     rfnoc_replay_samples_from_file.cpp
     #benchmark_streamer.cpp

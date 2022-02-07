@@ -629,8 +629,13 @@ int dpdk_io_service::_send_arp_request(
     hdr       = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr*);
     arp_frame = (struct rte_arp_hdr*)&hdr[1];
 
-    memset(hdr->d_addr.addr_bytes, 0xFF, RTE_ETHER_ADDR_LEN);
-    hdr->s_addr     = port->get_mac_addr();
+    #if RTE_VER_YEAR > 21 || (RTE_VER_YEAR == 21 && RTE_VER_MONTH == 11)
+        memset(hdr->dst_addr.addr_bytes, 0xFF, RTE_ETHER_ADDR_LEN);
+        hdr->src_addr   = port->get_mac_addr();
+    #else
+        memset(hdr->d_addr.addr_bytes, 0xFF, RTE_ETHER_ADDR_LEN);
+        hdr->s_addr     = port->get_mac_addr();
+    #endif
     hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP);
 
     arp_frame->arp_hardware          = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
@@ -666,6 +671,8 @@ int dpdk_io_service::_rx_burst(dpdk::dpdk_port* port, dpdk::queue_id_t queue)
         return 0;
     }
 
+    UHD_LOG_INFO("dpdk_io_service", "_rx_burst");
+
     for (int buf = 0; buf < num_rx; buf++) {
         uint64_t ol_flags = bufs[buf]->ol_flags;
         hdr               = rte_pktmbuf_mtod(bufs[buf], struct rte_ether_hdr*);
@@ -676,11 +683,12 @@ int dpdk_io_service::_rx_burst(dpdk::dpdk_port* port, dpdk::queue_id_t queue)
                 rte_pktmbuf_free(bufs[buf]);
                 break;
             case RTE_ETHER_TYPE_IPV4:
-                if ((ol_flags & PKT_RX_IP_CKSUM_MASK) == PKT_RX_IP_CKSUM_BAD) {
+                if ((ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK) == RTE_MBUF_F_RX_IP_CKSUM_BAD) {
                     UHD_LOG_WARNING("DPDK::IO_SERVICE", "RX packet has bad IP cksum");
-                } else if ((ol_flags & PKT_RX_IP_CKSUM_MASK) == PKT_RX_IP_CKSUM_NONE) {
+                } else if ((ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK) == RTE_MBUF_F_RX_IP_CKSUM_NONE) {
                     UHD_LOG_WARNING("DPDK::IO_SERVICE", "RX packet missing IP cksum");
                 } else {
+                    //UHD_LOGGER_INFO("dpdk_io_service") << "_process_ipv4";
                     _process_ipv4(port, bufs[buf], (struct rte_ipv4_hdr*)l2_data);
                 }
                 break;
@@ -689,6 +697,9 @@ int dpdk_io_service::_rx_burst(dpdk::dpdk_port* port, dpdk::queue_id_t queue)
                 break;
         }
     }
+
+    //UHD_LOGGER_INFO("dpdk_io_service") << "num_rx=" << num_rx;
+
     return num_rx;
 }
 
@@ -743,6 +754,7 @@ int dpdk_io_service::_process_ipv4(
         return -ENODEV;
     }
     if (pkt->next_proto_id == IPPROTO_UDP) {
+        //UHD_LOGGER_INFO("dpdk_io_service") << "_process_udp";
         return _process_udp(port, mbuf, (struct rte_udp_hdr*)&pkt[1], bcast);
     }
     rte_pktmbuf_free(mbuf);
@@ -772,16 +784,20 @@ int dpdk_io_service::_process_udp(
         rte_pktmbuf_free(mbuf);
         return -ENOENT;
     }
+    //UHD_LOGGER_INFO("_process_udp") << "1";
     // Turn rte_mbuf -> dpdk_frame_buff
     auto link = rx_entry->front()->link;
     link->enqueue_recv_mbuf(mbuf);
     auto buff       = link->get_recv_buff(0);
     bool rcvr_found = false;
     for (auto client_if : *rx_entry) {
+        //UHD_LOGGER_INFO("_process_udp") << "2";
         // Check all the muxed receivers...
         if (client_if->recv_cb(buff, link, link)) {
+            //UHD_LOGGER_INFO("_process_udp") << "3";
             rcvr_found = true;
             if (buff) {
+                //UHD_LOGGER_INFO("_process_udp") << "4";
                 assert(client_if->is_recv);
                 auto recv_io  = (dpdk_recv_io*)client_if->io_client;
                 auto buff_ptr = (dpdk::dpdk_frame_buff*)buff.release();
@@ -812,6 +828,8 @@ int dpdk_io_service::_tx_burst(dpdk::dpdk_port* port)
 {
     unsigned int total_tx = 0;
     auto& queues          = _tx_queues.at(port->get_port_id());
+
+    //UHD_LOG_INFO("dpdk_io_service", "_tx_burst");
 
     for (auto& send_io : queues) {
         unsigned int num_tx   = rte_ring_count(send_io->_send_queue);
@@ -847,6 +865,10 @@ int dpdk_io_service::_tx_burst(dpdk::dpdk_port* port)
             _wake_client(&send_io->_dpdk_io_if);
         }
         total_tx += num_tx;
+    }
+
+    if (total_tx > 0) {
+        UHD_LOGGER_INFO("dpdk_io_service") << "_tx_burst total_tx=" << total_tx;
     }
 
     return total_tx;
