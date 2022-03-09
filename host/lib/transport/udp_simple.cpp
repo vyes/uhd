@@ -24,7 +24,7 @@ public:
         : _connected(connect)
     {
         UHD_LOGGER_TRACE("UDP")
-            << boost::format("Creating udp transport for %s %s") % addr % port;
+            << boost::format("Creating udp transport to %s:%s") % addr % port;
 
         // resolve the address
         asio::ip::udp::resolver resolver(_io_service);

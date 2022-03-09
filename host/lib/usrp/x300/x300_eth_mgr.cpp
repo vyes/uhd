@@ -230,9 +230,14 @@ both_links_t eth_manager::get_links(link_type_t link_type,
 
     x300_eth_conn_t conn = eth_conns[local_device_id];
 
+    //UHD_ASSERT_THROW(link_args.has_key("enable_fc"));
+
     const bool enable_fc = not link_args.has_key("enable_fc")
                            || uhd::cast::from_str<bool>(link_args.get("enable_fc"));
     const bool lossy_xport = enable_fc;
+
+    UHD_LOG_ERROR("X300", "enable_fc=" << enable_fc);
+    //throw uhd::runtime_error("enable_fc");
 
     // Buffering is done in the socket buffers, so size them relative to
     // the link rate

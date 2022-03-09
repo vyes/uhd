@@ -84,6 +84,9 @@ public:
      */
     void shutdown();
 
+    void to_gpu();
+    void to_cpu();
+
     /*! Return a list of all edges
      */
     std::vector<graph_edge_t> enumerate_edges();
@@ -310,6 +313,8 @@ private:
 
     //! A flag if the graph has shut down. Is protected by _release_mutex
     bool _shutdown{false};
+
+    bool _flow_to_gpu{false};
 };
 
 

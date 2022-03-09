@@ -229,6 +229,9 @@ mpmd_mboard_impl::mpmd_mb_iface::make_rx_data_transport(
         uhd::transport::link_type_t::RX_DATA,
         xport_args);
 
+    UHD_LOG_ERROR("MPMD::MB_IFACE", "make_rx_data_transport: enable_fc=" << enable_fc);
+    UHD_LOGGER_ERROR("MPMD::MB_IFACE") << "make_rx_data_transport stacktrace:\n" << boost::stacktrace::stacktrace();
+
     /* Associate local device ID with the adapter */
     _adapter_map[local_sep_addr.first] = send_link->get_send_adapter_id();
 

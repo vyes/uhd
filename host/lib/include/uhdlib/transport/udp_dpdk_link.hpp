@@ -186,7 +186,7 @@ public:
     /*!
      * Enqueue a received mbuf, which can be pulled via get_recv_buff()
      */
-    void enqueue_recv_mbuf(struct rte_mbuf* mbuf);
+    int enqueue_recv_mbuf(struct rte_mbuf* mbuf);
 
     /*!
      * Receive a packet and return a frame buffer containing the packet data.

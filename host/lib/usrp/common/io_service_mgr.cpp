@@ -421,6 +421,9 @@ public:
     void disconnect_links(
         recv_link_if::sptr recv_link, send_link_if::sptr send_link) override;
 
+    void to_cpu();
+    void to_gpu();
+
 private:
     enum io_service_type_t { INLINE_IO_SRV, BLOCKING_IO_SRV, POLLING_IO_SRV };
     struct xport_args_t
@@ -548,6 +551,16 @@ io_service::sptr io_service_mgr_impl::connect_links(recv_link_if::sptr recv_link
 
     _link_info_map[links] = {io_srv, io_srv_type};
     return io_srv;
+}
+
+void io_service_mgr_impl::to_cpu()
+{
+    throw uhd::runtime_error("to_cpu unsupported... use DPDK!");
+}
+
+void io_service_mgr_impl::to_gpu()
+{
+    throw uhd::runtime_error("to_gpu unsupported... use DPDK!");
 }
 
 void io_service_mgr_impl::disconnect_links(

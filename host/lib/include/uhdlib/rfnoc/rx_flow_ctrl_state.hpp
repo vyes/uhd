@@ -37,12 +37,12 @@ public:
 
             UHD_LOGGER_DEBUG("rx_flow_ctrl_state")
                 << "Flow control state mismatch: bytes reported: " << counts.bytes
-                << " bytes counted locally: " << _recv_counts.bytes
-                << " delta: " << (counts.bytes - _recv_counts.bytes)
-                << " Packets reported: " << counts.packets
-                << " Packets counted locally: " << _recv_counts.packets
-                << " delta: " << (counts.packets - _recv_counts.packets)
-                << " src_epid=" << _epids.first << " dst_epid=" << _epids.second
+                << ", bytes counted locally: " << _recv_counts.bytes
+                << ", delta: " << (counts.bytes - _recv_counts.bytes)
+                << ", Packets reported: " << counts.packets
+                << ", Packets counted locally: " << _recv_counts.packets
+                << ", delta: " << (counts.packets - _recv_counts.packets)
+                << ", src_epid=" << _epids.first << ", dst_epid=" << _epids.second
                 << std::endl;
 
             _recv_counts = counts;

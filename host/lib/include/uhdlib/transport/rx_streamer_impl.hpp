@@ -361,10 +361,12 @@ private:
     {
         const char* buffer_ptr = reinterpret_cast<const char*>(_in_buffs[chan]);
 
-        _converters[chan]->conv(buffer_ptr, out_buffs, num_samps);
+        if (buffer_ptr) { //on GPU it is NULL
+            _converters[chan]->conv(buffer_ptr, out_buffs, num_samps);
 
-        // Advance the pointer for the source buffer
-        _in_buffs[chan] = buffer_ptr + num_samps * _convert_info.bytes_per_otw_item;
+            // Advance the pointer for the source buffer
+            _in_buffs[chan] = buffer_ptr + num_samps * _convert_info.bytes_per_otw_item;
+        }
 
         if (_buff_samps_remaining == num_samps) {
             _zero_copy_streamer.release_recv_buff(chan);

@@ -205,8 +205,8 @@ public:
         dpdk::port_id_t nic_port = link->get_port()->get_port_id();
         uint16_t id              = io_srv->_get_unique_client_id();
         UHD_LOG_DEBUG(
-            "DPDK::IO_SERVICE", "Creating recv client with queue size of " << queue_size << " for (" << dpdk::ipv4_num_to_str(link->get_remote_ipv4()) << ":" << link->get_remote_port() << ")");
-        UHD_LOGGER_TRACE("DPDK::IO_SERVICE") << "stacktrace:\n" << boost::stacktrace::stacktrace();
+            "DPDK::IO_SERVICE", "Creating recv client with queue size of " << queue_size << " remote=(" << dpdk::ipv4_num_to_str(link->get_remote_ipv4()) << ":" << rte_be_to_cpu_16(link->get_remote_port()) << ") local_port=" << rte_be_to_cpu_16(link->get_local_port()));
+        //UHD_LOGGER_TRACE("DPDK::IO_SERVICE") << "recv client stacktrace:\n" << boost::stacktrace::stacktrace();
         char name[16];
         snprintf(name, sizeof(name), "rx%hu-%hu", nic_port, id);
         _recv_queue = rte_ring_create(

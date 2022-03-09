@@ -5,6 +5,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
 ########################################################################
 # example applications
 ########################################################################
@@ -31,7 +33,6 @@ set(example_sources
     sync_to_gps.cpp
     rfnoc_nullsource_ce_rx.cpp
     rfnoc_rx_to_file.cpp
-    rfnoc_dpdk_rx_to_gpu.cpp
     rfnoc_radio_loopback.cpp
     rfnoc_replay_samples_from_file.cpp
     #benchmark_streamer.cpp
@@ -64,6 +65,50 @@ if(CURSES_FOUND)
     target_link_libraries(twinrx_freq_hopping uhd ${CURSES_LIBRARIES} ${Boost_LIBRARIES})
     UHD_INSTALL(TARGETS twinrx_freq_hopping RUNTIME DESTINATION ${PKG_LIB_DIR}/examples COMPONENT examples)
 endif(CURSES_FOUND)
+
+########################################################################
+# RX2GPU
+########################################################################
+macro(print_all_variables)
+    message(STATUS "print_all_variables------------------------------------------{")
+    get_cmake_property(_variableNames VARIABLES)
+    foreach (_variableName ${_variableNames})
+        message(STATUS "${_variableName}=${${_variableName}}")
+    endforeach()
+    message(STATUS "print_all_variables------------------------------------------}")
+endmacro()
+
+include(CheckLanguage)
+check_language(CUDA)
+
+if (CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+endif()
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBDPDK REQUIRED libdpdk)
+
+if(NOT LIBDPDK_FOUND)
+    message(FATAL_ERROR "!LIBDPDK_FOUND")
+endif()
+
+if(LIBDPDK_FOUND AND CMAKE_CUDA_COMPILER)
+    # Link with nvToolsExt
+    if(ENABLE_NVTX)
+        set(NVTX_LIB nvToolsExt)
+        add_definitions(-DUSE_NVTX=1)
+    endif(ENABLE_NVTX)
+
+    include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} ${LIBDPDK_INCLUDE_DIRS})
+
+    find_library(CUDART_LIBRARY cudart ${CMAKE_CUDA_HOST_IMPLICIT_LINK_DIRECTORIES})
+
+    add_executable(rfnoc_dpdk_rx_to_gpu rfnoc_dpdk_rx_to_gpu.cpp)
+    target_link_libraries(rfnoc_dpdk_rx_to_gpu uhd ${Boost_LIBRARIES} ${CUDART_LIBRARY} ${LIBDPDK_LIBRARIES} ${NVTX_LIB})
+    print_all_variables()
+    #target_link_libraries(rfnoc_dpdk_rx_to_gpu)
+    UHD_INSTALL(TARGETS rfnoc_dpdk_rx_to_gpu RUNTIME DESTINATION ${PKG_LIB_DIR}/examples COMPONENT examples)
+endif()
 
 ########################################################################
 # Examples using C API

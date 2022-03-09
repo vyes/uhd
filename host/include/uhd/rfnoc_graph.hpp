@@ -326,6 +326,9 @@ public:
      */
     virtual void release() = 0;
 
+    virtual void to_gpu() = 0;
+    virtual void to_cpu() = 0;
+
     /******************************************
      * Streaming
      ******************************************/

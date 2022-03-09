@@ -42,6 +42,16 @@ public:
         io_srv->detach_send_link(send_link);
     }
 
+    void to_cpu()
+    {
+        _dpdk_ctx->to_cpu();
+    }
+
+    void to_gpu()
+    {
+        _dpdk_ctx->to_gpu();
+    }
+
 private:
     transport::io_service::sptr _get_io_service(
         transport::recv_link_if::sptr recv_link, transport::send_link_if::sptr send_link)

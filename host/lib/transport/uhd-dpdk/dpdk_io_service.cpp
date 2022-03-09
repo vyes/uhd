@@ -12,6 +12,8 @@
 #include <uhdlib/utils/narrow.hpp>
 #include <cmath>
 
+#include <boost/stacktrace.hpp>
+
 /*
  * Memory management
  *
@@ -291,7 +293,9 @@ int dpdk_io_service::_io_worker(void* arg)
     while (!status) {
         /* For each port, attempt to receive packets and process */
         for (auto port : srv->_ports) {
-            srv->_rx_burst(port, 0);
+            for (dpdk::queue_id_t q=0; q<port->get_rx_queue_count(); q++) {
+                srv->_rx_burst(port, q);
+            }
         }
         /* For each port's TX queues, do TX */
         for (auto port : srv->_ports) {
@@ -429,6 +433,8 @@ void dpdk_io_service::_service_flow_close(dpdk::wait_req* req)
         std::list<dpdk_io_if*>* xport_list;
 
         if (rte_hash_lookup_data(_rx_table, &ht_key, (void**)&xport_list) > 0) {
+            //UHD_LOGGER_TRACE("DPDK::IO_SERVICE") << "_service_flow_close stacktrace:\n" << boost::stacktrace::stacktrace();
+
             UHD_ASSERT_THROW(xport_list->empty());
             delete xport_list;
             rte_hash_del_key(_rx_table, &ht_key);
@@ -619,7 +625,7 @@ int dpdk_io_service::_send_arp_request(
     struct rte_ether_hdr* hdr;
     struct rte_arp_hdr* arp_frame;
 
-    mbuf = rte_pktmbuf_alloc(port->get_tx_pktbuf_pool());
+    mbuf = rte_pktmbuf_alloc(port->get_cpu_tx_pktbuf_pool());
     if (unlikely(mbuf == NULL)) {
         UHD_LOG_WARNING(
             "DPDK::IO_SERVICE", "Could not allocate packet buffer for ARP request");
@@ -671,7 +677,7 @@ int dpdk_io_service::_rx_burst(dpdk::dpdk_port* port, dpdk::queue_id_t queue)
         return 0;
     }
 
-    UHD_LOG_INFO("dpdk_io_service", "_rx_burst");
+    UHD_LOGGER_INFO("DPDK::IO_SERVICE") << "_rx_burst(queue=" << queue << ") num_rx=" << num_rx;
 
     for (int buf = 0; buf < num_rx; buf++) {
         uint64_t ol_flags = bufs[buf]->ol_flags;
@@ -679,6 +685,7 @@ int dpdk_io_service::_rx_burst(dpdk::dpdk_port* port, dpdk::queue_id_t queue)
         l2_data           = (char*)&hdr[1];
         switch (rte_be_to_cpu_16(hdr->ether_type)) {
             case RTE_ETHER_TYPE_ARP:
+                rte_pktmbuf_dump(stdout, bufs[buf], bufs[buf]->pkt_len);
                 _process_arp(port, queue, (struct rte_arp_hdr*)l2_data);
                 rte_pktmbuf_free(bufs[buf]);
                 break;
@@ -697,8 +704,6 @@ int dpdk_io_service::_rx_burst(dpdk::dpdk_port* port, dpdk::queue_id_t queue)
                 break;
         }
     }
-
-    //UHD_LOGGER_INFO("dpdk_io_service") << "num_rx=" << num_rx;
 
     return num_rx;
 }
@@ -765,6 +770,7 @@ int dpdk_io_service::_process_ipv4(
 int dpdk_io_service::_process_udp(
     dpdk::dpdk_port* port, struct rte_mbuf* mbuf, struct rte_udp_hdr* pkt, bool /*bcast*/)
 {
+    UHD_LOGGER_INFO("_process_udp") << "start";
     // Get the link
     struct dpdk::ipv4_5tuple ht_key = {.flow_type = dpdk::flow_type::FLOW_TYPE_UDP,
         .src_ip                                   = 0,
@@ -787,7 +793,11 @@ int dpdk_io_service::_process_udp(
     //UHD_LOGGER_INFO("_process_udp") << "1";
     // Turn rte_mbuf -> dpdk_frame_buff
     auto link = rx_entry->front()->link;
-    link->enqueue_recv_mbuf(mbuf);
+    if (link->enqueue_recv_mbuf(mbuf)) {
+        UHD_LOG_ERROR("DPDK::IO_SERVICE", "Dropping packet: Can't enqueue recv mbuf");
+        rte_pktmbuf_free(mbuf);
+        return -ENOENT;
+    }
     auto buff       = link->get_recv_buff(0);
     bool rcvr_found = false;
     for (auto client_if : *rx_entry) {
@@ -797,7 +807,7 @@ int dpdk_io_service::_process_udp(
             //UHD_LOGGER_INFO("_process_udp") << "3";
             rcvr_found = true;
             if (buff) {
-                //UHD_LOGGER_INFO("_process_udp") << "4";
+                UHD_LOGGER_INFO("_process_udp") << "2";
                 assert(client_if->is_recv);
                 auto recv_io  = (dpdk_recv_io*)client_if->io_client;
                 auto buff_ptr = (dpdk::dpdk_frame_buff*)buff.release();

@@ -568,6 +568,26 @@ public:
         _graph->release();
     }
 
+    void to_gpu() override
+    {
+        UHD_ASSERT_THROW(_io_srv_mgr);
+
+        UHD_LOG_TRACE(LOG_ID, "to_gpu!");
+        _graph->to_gpu();
+
+        _io_srv_mgr->to_gpu();
+    }
+
+    void to_cpu() override
+    {
+        UHD_ASSERT_THROW(_io_srv_mgr);
+
+        UHD_LOG_TRACE(LOG_ID, "to_cpu!");
+        _graph->to_cpu();
+
+        _io_srv_mgr->to_cpu();
+    }
+
 private:
     /**************************************************************************
      * Device Setup

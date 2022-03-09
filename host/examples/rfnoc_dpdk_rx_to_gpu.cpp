@@ -25,6 +25,13 @@
 #include <iostream>
 #include <thread>
 
+// CUDA runtime
+#include <cuda_runtime.h>
+
+//DPDK GPU
+#define ALLOW_EXPERIMENTAL_API
+#include <rte_gpudev.h>
+
 namespace po = boost::program_options;
 
 constexpr int64_t UPDATE_INTERVAL = 1; // 1 second update interval for BW summary
@@ -36,7 +43,8 @@ void sig_int_handler(int)
 }
 
 template <typename samp_type>
-void recv_to_file(uhd::rx_streamer::sptr rx_stream,
+void recv_to_gpu(uhd::rfnoc::rfnoc_graph::sptr graph,
+    uhd::rx_streamer::sptr rx_stream,
     const std::string& file,
     const size_t samps_per_buff,
     const double rx_rate,
@@ -66,6 +74,9 @@ void recv_to_file(uhd::rx_streamer::sptr rx_stream,
     stream_cmd.time_spec  = uhd::time_spec_t();
     std::cout << "Issuing stream cmd" << std::endl;
     rx_stream->issue_stream_cmd(stream_cmd);
+
+    //reconfigure flow to GPU!
+    graph->to_gpu();
 
     const auto start_time = std::chrono::steady_clock::now();
     const auto stop_time =
@@ -143,11 +154,14 @@ void recv_to_file(uhd::rx_streamer::sptr rx_stream,
     }
     const auto actual_stop_time = std::chrono::steady_clock::now();
 
+    graph->to_cpu(); //is it needed???
+
     stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
     std::cout << "Issuing stop stream cmd" << std::endl;
     rx_stream->issue_stream_cmd(stream_cmd);
 
     // Run recv until nothing is left
+    graph->to_gpu(); //is it needed???
     int num_post_samps = 0;
     do {
         num_post_samps = rx_stream->recv(&buff.front(), buff.size(), md, 3.0);
@@ -227,6 +241,7 @@ int UHD_SAFE_MAIN(int argc, char* argv[])
         block_props;
     size_t total_num_samps, spb, spp, radio_id, radio_chan, block_port;
     double rate, freq, gain, bw, total_time, setup_time;
+    //int gpu_id;
 
     // setup the program options
     po::options_description desc("Allowed options");
@@ -234,11 +249,12 @@ int UHD_SAFE_MAIN(int argc, char* argv[])
     desc.add_options()
         ("help", "help message")
         ("file", po::value<std::string>(&file)->default_value("usrp_samples.dat"), "name of the file to write binary samples to")
-        ("format", po::value<std::string>(&format)->default_value("sc16"), "File sample format: sc16, fc32, or fc64")
+        ("format", po::value<std::string>(&format)->default_value("sc16"), "File sample format: sc16")
         ("duration", po::value<double>(&total_time)->default_value(0), "total number of seconds to receive")
         ("nsamps", po::value<size_t>(&total_num_samps)->default_value(0), "total number of samples to receive")
         ("spb", po::value<size_t>(&spb)->default_value(10000), "samples per buffer")
         ("spp", po::value<size_t>(&spp), "samples per packet (on FPGA and wire)")
+        //("gpu_id", po::value<int>(&gpu_id)->default_value(0), "GPU device ID")
         ("streamargs", po::value<std::string>(&streamargs)->default_value(""), "stream args")
         ("progress", "periodically display short-term bandwidth")
         ("stats", "show average bandwidth on exit")
@@ -271,10 +287,10 @@ int UHD_SAFE_MAIN(int argc, char* argv[])
 
     // print the help message
     if (vm.count("help")) {
-        std::cout << "UHD/RFNoC RX samples to file " << desc << std::endl;
+        std::cout << "UHD/RFNoC RX samples to GPU " << desc << std::endl;
         std::cout << std::endl
                   << "This application streams data from a single channel of a USRP "
-                     "device to a file.\n"
+                     "device to a GPU.\n"
                   << std::endl;
         return ~0;
     }
@@ -292,7 +308,7 @@ int UHD_SAFE_MAIN(int argc, char* argv[])
                   << std::endl;
     }
 
-    if (format != "sc16" and format != "fc32" and format != "fc64") {
+    if (format != "sc16") {
         std::cout << "Invalid sample format: " << format << std::endl;
         return EXIT_FAILURE;
     }
@@ -303,6 +319,36 @@ int UHD_SAFE_MAIN(int argc, char* argv[])
     std::cout << std::endl;
     std::cout << "Creating the RFNoC graph with args: " << args << std::endl;
     auto graph = uhd::rfnoc::rfnoc_graph::make(args);
+
+    /************************************************************************
+     * GPU setup
+     ***********************************************************************/
+    /*
+    //cudaSetDevice(gpu_id);
+	//cudaFree(0);
+
+    uint16_t nb_gpus = rte_gpu_count_avail();
+	printf("DPDK found %d GPUs:\n", nb_gpus);
+
+    int gpu_idx = 0;
+	RTE_GPU_FOREACH(gpu_idx) {
+        struct rte_gpu_info ginfo;
+		if(rte_gpu_info_get(gpu_idx, &ginfo))
+			rte_exit(EXIT_FAILURE, "rte_gpu_info_get error - bye\n");
+
+		printf("\tGPU ID %d: parent ID %d GPU Bus ID %s NUMA node %d Tot memory %.02f MB, Tot processors %d\n",
+				ginfo.dev_id,
+				ginfo.parent,
+				ginfo.name,
+				ginfo.numa_node,
+				(((float)ginfo.total_memory)/(float)1024)/(float)1024,
+				ginfo.processor_count
+			);
+	}
+
+    if(nb_gpus == 0 || nb_gpus < gpu_id)
+		rte_exit(EXIT_FAILURE, "Error nb_gpus %d gpu_id %d\n", nb_gpus, gpu_id);
+    */
 
     // Create handle for radio object
     uhd::rfnoc::block_id_t radio_ctrl_id(0, "Radio", radio_id);
@@ -453,6 +499,13 @@ int UHD_SAFE_MAIN(int argc, char* argv[])
     uhd::stream_args_t stream_args(
         format, "sc16"); // We should read the wire format from the blocks
     stream_args.args = streamer_args;
+    /*
+    //n320 does not support this!
+    stream_args.args["addr"] = "192.168.10.1";
+    stream_args.args["port"] = "12345";
+    */
+    //disable flow control! because it multiplexed in the same DATA plane UDP CHDR stream
+    //stream_args.args["enable_fc"] = "0";
     std::cout << "Using streamer args: " << stream_args.args.to_string() << std::endl;
     auto rx_stream = graph->create_rx_streamer(1, stream_args);
 
@@ -494,26 +547,20 @@ int UHD_SAFE_MAIN(int argc, char* argv[])
         std::signal(SIGINT, &sig_int_handler);
         std::cout << "Press Ctrl + C to stop streaming..." << std::endl;
     }
-#define recv_to_file_args() \
-    (rx_stream,             \
-        file,               \
-        spb,                \
-        rate,               \
-        total_num_samps,    \
-        total_time,         \
-        bw_summary,         \
-        stats,              \
-        enable_size_map,    \
-        continue_on_bad_packet)
-    // recv to file
-    if (format == "fc64")
-        recv_to_file<std::complex<double>> recv_to_file_args();
-    else if (format == "fc32")
-        recv_to_file<std::complex<float>> recv_to_file_args();
-    else if (format == "sc16")
-        recv_to_file<std::complex<short>> recv_to_file_args();
-    else
-        throw std::runtime_error("Unknown data format: " + format);
+
+    // recv to gpu
+    recv_to_gpu<std::complex<short>>(graph,
+        rx_stream,
+        file,
+        spb,
+        rate,
+        total_num_samps,
+        total_time,
+        bw_summary,
+        stats,
+        enable_size_map,
+        continue_on_bad_packet
+    );
 
     // finished
     std::cout << std::endl << "Done!" << std::endl << std::endl;

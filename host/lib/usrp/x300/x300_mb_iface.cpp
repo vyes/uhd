@@ -160,6 +160,8 @@ uhd::rfnoc::chdr_rx_data_xport::uptr x300_impl::x300_mb_iface::make_rx_data_tran
         remote_epid,
         xport_args);
 
+    UHD_LOG_ERROR("X300", "make_rx_data_transport: enable_fc=" << enable_fc);
+    
     /* Associate local device ID with the adapter */
     _adapter_map[local_sep_addr.first] = send_link->get_send_adapter_id();
 

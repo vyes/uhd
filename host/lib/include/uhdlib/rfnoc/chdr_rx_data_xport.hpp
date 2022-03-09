@@ -16,6 +16,10 @@
 #include <uhdlib/transport/link_if.hpp>
 #include <memory>
 
+#include <uhd/utils/log.hpp>
+
+#include <boost/stacktrace.hpp>
+
 namespace uhd { namespace rfnoc {
 
 namespace mgmt {
@@ -228,12 +232,20 @@ public:
     {
         buff_t::uptr buff = _recv_io->get_recv_buff(timeout_ms);
 
+        UHD_LOG_TRACE("XPORT", "get_recv_buff "
+            << "!buff=" << (!buff)
+        );
+
         if (!buff) {
             return std::make_tuple(typename buff_t::uptr(), packet_info_t(), false);
         }
 
         auto info      = _read_data_packet_info(buff);
         bool seq_error = _is_out_of_sequence(std::get<1>(info));
+
+        UHD_LOG_TRACE("XPORT", "get_recv_buff "
+            << "info"
+        );
 
         return std::make_tuple(std::move(buff), std::get<0>(info), seq_error);
     }
@@ -276,6 +288,11 @@ private:
         // width, because that's how the FPGA tracks bytes, and want to match
         // that behaviour.
         const auto packet_size_rounded = _round_pkt_size(header.get_length());
+
+        UHD_LOG_TRACE("XPORT::_recv_callback",
+            "RX PKT dst_epid=" << dst_epid
+            << ", type=" << type
+            << ", packet_size_rounded=" << packet_size_rounded);
 
         if (type == chdr::PKT_TYPE_STRC) {
             chdr::strc_payload strc;
@@ -381,29 +398,58 @@ private:
     std::tuple<packet_info_t, uint16_t> _read_data_packet_info(buff_t::uptr& buff)
     {
         const void* data = buff->data();
-        _recv_packet->refresh(data);
-        const auto header        = _recv_packet->get_chdr_header();
-        const auto optional_time = _recv_packet->get_timestamp();
+        const bool data_on_gpu = buff->data_on_gpu();
 
-        packet_info_t info;
-        info.eob           = header.get_eob();
-        info.eov           = header.get_eov();
-        info.has_tsf       = optional_time.is_initialized();
-        info.tsf           = optional_time ? *optional_time : 0;
-        info.payload_bytes = _recv_packet->get_payload_size();
-        info.payload       = _recv_packet->get_payload_const_ptr();
+        if (not data_on_gpu) {
+            _recv_packet->refresh(data);
+            const auto header        = _recv_packet->get_chdr_header();
+            const auto optional_time = _recv_packet->get_timestamp();
 
-        const uint8_t* pkt_end =
-            reinterpret_cast<uint8_t*>(buff->data()) + buff->packet_size();
-        const size_t pyld_pkt_len =
-            pkt_end - reinterpret_cast<const uint8_t*>(info.payload);
+            packet_info_t info;
+            info.eob           = header.get_eob();
+            info.eov           = header.get_eov();
+            info.has_tsf       = optional_time.is_initialized();
+            info.tsf           = optional_time ? *optional_time : 0;
+            info.payload_bytes = _recv_packet->get_payload_size();
+            info.payload       = _recv_packet->get_payload_const_ptr();
 
-        if (pyld_pkt_len < info.payload_bytes) {
-            _recv_io->release_recv_buff(std::move(buff));
-            throw uhd::value_error("Bad CHDR header or invalid packet length.");
+            const uint8_t* pkt_end =
+                reinterpret_cast<uint8_t*>(buff->data()) + buff->packet_size();
+            const size_t pyld_pkt_len =
+                pkt_end - reinterpret_cast<const uint8_t*>(info.payload);
+
+            UHD_LOG_TRACE("XPORT::_read_data_packet_info",
+                "data_on_gpu=" << data_on_gpu
+                << ", pyld_pkt_len=" << pyld_pkt_len
+                << ", info.payload_bytes=" << info.payload_bytes);
+
+            if (pyld_pkt_len < info.payload_bytes) {
+                _recv_io->release_recv_buff(std::move(buff));
+                throw uhd::value_error("Bad CHDR header or invalid packet length.");
+            }
+
+            return std::make_tuple(info, header.get_seq_num());
+        } else {
+            _recv_packet->refresh(data);
+            const auto header        = _recv_packet->get_chdr_header();
+            const auto optional_time = _recv_packet->get_timestamp();
+
+            packet_info_t info;
+            info.eob           = header.get_eob();
+            info.eov           = header.get_eov();
+            info.has_tsf       = optional_time.is_initialized();
+            info.tsf           = optional_time ? *optional_time : 0;
+            info.payload_bytes = _recv_packet->get_payload_size();;
+            info.payload       = nullptr;
+
+            UHD_LOG_TRACE("XPORT::_read_data_packet_info",
+                "data_on_gpu=" << data_on_gpu
+                << ", info.payload_bytes=" << info.payload_bytes);
+
+            //UHD_LOGGER_TRACE("XPORT::_read_data_packet_info") << "stacktrace:\n" << boost::stacktrace::stacktrace();
+
+            return std::make_tuple(info, header.get_seq_num());
         }
-
-        return std::make_tuple(info, header.get_seq_num());
     }
 
     inline size_t _round_pkt_size(const size_t pkt_size_bytes)

@@ -13,6 +13,8 @@
 #include <arpa/inet.h>
 #include <memory>
 
+#include <boost/stacktrace.hpp>
+
 // The DPDK function rte_mbuf_to_priv() is experimental and generates a warning.
 // This pragma disables that warning since it is expected
 #pragma GCC diagnostic push
@@ -31,6 +33,7 @@ udp_dpdk_link::udp_dpdk_link(dpdk::port_id_t port_id,
     , _num_send_frames(params.num_send_frames)
     , _send_frame_size(params.send_frame_size)
 {
+    //UHD_LOGGER_TRACE("DPDK::udp_dpdk_link") << "stacktrace:\n" << boost::stacktrace::stacktrace();
     // Get a reference to the context, since this class manages DPDK memory
     _ctx = dpdk_ctx::get();
     UHD_ASSERT_THROW(_ctx);
@@ -61,8 +64,8 @@ udp_dpdk_link::udp_dpdk_link(dpdk::port_id_t port_id,
     auto info      = _port->get_adapter_info();
     auto& adap_ctx = adapter_ctx::get();
     _adapter_id    = adap_ctx.register_adapter(info);
-    UHD_LOGGER_TRACE("DPDK") << boost::format("Created udp_dpdk_link to (%s:%s)")
-                                    % remote_addr % remote_port;
+    UHD_LOGGER_TRACE("DPDK") << boost::format("Created udp_dpdk_link to %s:%s from local port %d")
+                                    % remote_addr % remote_port % rte_be_to_cpu_16(_local_port);
     UHD_LOGGER_TRACE("DPDK")
         << boost::format("num_recv_frames=%d, recv_frame_size=%d, num_send_frames=%d, "
                          "send_frame_size=%d")
@@ -103,27 +106,72 @@ udp_dpdk_link::sptr udp_dpdk_link::make(const dpdk::port_id_t port_id,
         port_id, remote_addr, remote_port, local_port, params);
 }
 
-void udp_dpdk_link::enqueue_recv_mbuf(struct rte_mbuf* mbuf)
+int udp_dpdk_link::enqueue_recv_mbuf(struct rte_mbuf* mbuf)
 {
-    // Get packet size
-    struct rte_udp_hdr* hdr = rte_pktmbuf_mtod_offset(
-        mbuf, struct rte_udp_hdr*, sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
-    size_t packet_size = rte_be_to_cpu_16(hdr->dgram_len) - sizeof(struct rte_udp_hdr);
-    // Prepare the dpdk_frame_buff
-    auto buff = new (rte_mbuf_to_priv(mbuf)) dpdk_frame_buff(mbuf);
-    buff->header_jump(
-        sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr));
-    buff->set_packet_size(packet_size);
-    // Add the dpdk_frame_buff to the list
-    if (_recv_buff_head) {
-        buff->prev                  = _recv_buff_head->prev;
-        buff->next                  = _recv_buff_head;
-        _recv_buff_head->prev->next = buff;
-        _recv_buff_head->prev       = buff;
+    UHD_LOG_TRACE("udp_dpdk_link::enqueue_recv_mbuf", 
+        " nb_segs=" << mbuf->nb_segs
+        << " data_len=" << mbuf->data_len
+        << " pkt_len=" << mbuf->pkt_len
+        << " buf_len=" << mbuf->buf_len
+    );
+    
+    if (mbuf->nb_segs <= 1) { //CPU
+        // Get packet size
+        struct rte_udp_hdr* hdr = rte_pktmbuf_mtod_offset(
+            mbuf, struct rte_udp_hdr*, sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
+        size_t packet_size = rte_be_to_cpu_16(hdr->dgram_len) - sizeof(struct rte_udp_hdr);
+        // Prepare the dpdk_frame_buff
+        auto buff = new (rte_mbuf_to_priv(mbuf)) dpdk_frame_buff(mbuf);
+        buff->set_data_on_gpu(false);
+        buff->header_jump(
+            sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr));
+        buff->set_packet_size(packet_size);
+        // Add the dpdk_frame_buff to the list
+        if (_recv_buff_head) {
+            buff->prev                  = _recv_buff_head->prev;
+            buff->next                  = _recv_buff_head;
+            _recv_buff_head->prev->next = buff;
+            _recv_buff_head->prev       = buff;
+        } else {
+            _recv_buff_head = buff;
+            buff->next      = buff;
+            buff->prev      = buff;
+        }
+        return 0; //OK
+    } else if (mbuf->nb_segs == 2) { //GPU buffer split
+        // Get packet size from first CPU segment
+        size_t pkt_size = mbuf->data_len - (sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr));
+
+        UHD_LOG_TRACE("udp_dpdk_link::enqueue_recv_mbuf", 
+            "pkt_size=" << pkt_size
+        );
+
+        assert(pkt_size == 16); //CHDR + timestamp
+
+        // Prepare the dpdk_frame_buff
+        auto buff = new (rte_mbuf_to_priv(mbuf)) dpdk_frame_buff(mbuf);
+
+        buff->set_data_on_gpu(true);
+
+        buff->header_jump(
+            sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr));
+        
+        buff->set_packet_size(pkt_size);
+        // Add the dpdk_frame_buff to the list
+        if (_recv_buff_head) {
+            buff->prev                  = _recv_buff_head->prev;
+            buff->next                  = _recv_buff_head;
+            _recv_buff_head->prev->next = buff;
+            _recv_buff_head->prev       = buff;
+        } else {
+            _recv_buff_head = buff;
+            buff->next      = buff;
+            buff->prev      = buff;
+        }
+        return 0; //OK
     } else {
-        _recv_buff_head = buff;
-        buff->next      = buff;
-        buff->prev      = buff;
+        UHD_LOG_ERROR("udp_dpdk_link::enqueue_recv_mbuf", "nb_segs=" << mbuf->nb_segs);
+        return -EINVAL;
     }
 }
 
@@ -156,7 +204,7 @@ void udp_dpdk_link::release_recv_buff(frame_buff::uptr buff)
 
 frame_buff::uptr udp_dpdk_link::get_send_buff(int32_t /*timeout_ms*/)
 {
-    auto mbuf = rte_pktmbuf_alloc(_port->get_tx_pktbuf_pool());
+    auto mbuf = rte_pktmbuf_alloc(_port->get_cpu_tx_pktbuf_pool());
     if (mbuf) {
         auto buff = new (rte_mbuf_to_priv(mbuf)) dpdk_frame_buff(mbuf);
         buff->header_jump(

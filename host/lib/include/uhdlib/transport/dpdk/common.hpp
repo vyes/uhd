@@ -141,25 +141,33 @@ public:
      * \param mtu The intended MTU for the port
      * \param num_queues Number of DMA queues to reserve for this port
      * \param num_desc The number of descriptors per DMA queue
-     * \param rx_pktbuf_pool A pointer to the port's RX packet buffer pool
-     * \param tx_pktbuf_pool A pointer to the port's TX packet buffer pool
+     * \param cpu_rx_pktbuf_pool A pointer to the port's CPU RX packet buffer pool
+     * \param cpu_tx_pktbuf_pool A pointer to the port's CPU TX packet buffer pool
+     * \param gpu_rx_pktbuf_pool A pointer to the port's GPU RX packet buffer pool
+     * \param gpu_tx_pktbuf_pool A pointer to the port's GPU TX packet buffer pool
      * \param rte_ipv4_address The IPv4 network address (w/ netmask)
      * \return A unique_ptr to a dpdk_port object
      */
     static dpdk_port::uptr make(port_id_t port,
         size_t mtu,
-        uint16_t num_queues,
+        uint16_t num_rx_queues,
+        uint16_t num_tx_queues,
         uint16_t num_desc,
-        struct rte_mempool* rx_pktbuf_pool,
-        struct rte_mempool* tx_pktbuf_pool,
+        struct rte_mempool* cpu_rx_pktbuf_pool,
+        struct rte_mempool* cpu_tx_pktbuf_pool,
+        struct rte_mempool* gpu_rx_pktbuf_pool,
+        struct rte_mempool* gpu_tx_pktbuf_pool,
         std::string rte_ipv4_address);
 
     dpdk_port(port_id_t port,
         size_t mtu,
-        uint16_t num_queues,
+        uint16_t num_rx_queues,
+        uint16_t num_tx_queues,
         uint16_t num_desc,
-        struct rte_mempool* rx_pktbuf_pool,
-        struct rte_mempool* tx_pktbuf_pool,
+        struct rte_mempool* cpu_rx_pktbuf_pool,
+        struct rte_mempool* cpu_tx_pktbuf_pool,
+        struct rte_mempool* gpu_rx_pktbuf_pool,
+        struct rte_mempool* gpu_tx_pktbuf_pool,
         std::string rte_ipv4_address);
 
     ~dpdk_port();
@@ -209,32 +217,60 @@ public:
         return _netmask;
     }
 
-    /*! Getter for this port's total DMA queue count, including initialized,
+    /*! Getter for this port's total DMA RX queue count, including initialized,
      * but unallocated queues
      *
      * \return The number of queues initialized on this port
      */
-    inline size_t get_queue_count() const
+    inline size_t get_rx_queue_count() const
     {
-        return _num_queues;
+        return _num_rx_queues;
     }
 
-    /*! Getter for this port's RX packet buffer memory pool
+    /*! Getter for this port's total DMA TX queue count, including initialized,
+     * but unallocated queues
+     *
+     * \return The number of queues initialized on this port
+     */
+    inline size_t get_tx_queue_count() const
+    {
+        return _num_tx_queues;
+    }
+
+    /*! Getter for this port's CPU RX packet buffer memory pool
      *
      * \return The RX packet buffer pool
      */
-    inline struct rte_mempool* get_rx_pktbuf_pool() const
+    inline struct rte_mempool* get_cpu_rx_pktbuf_pool() const
     {
-        return _rx_pktbuf_pool;
+        return _cpu_rx_pktbuf_pool;
     }
 
-    /*! Getter for this port's TX packet buffer memory pool
+    /*! Getter for this port's CPU TX packet buffer memory pool
      *
      * \return The TX packet buffer pool
      */
-    inline struct rte_mempool* get_tx_pktbuf_pool() const
+    inline struct rte_mempool* get_cpu_tx_pktbuf_pool() const
     {
-        return _tx_pktbuf_pool;
+        return _cpu_tx_pktbuf_pool;
+    }
+
+    /*! Getter for this port's GPU RX packet buffer memory pool
+     *
+     * \return The RX packet buffer pool
+     */
+    inline struct rte_mempool* get_gpu_rx_pktbuf_pool() const
+    {
+        return _gpu_rx_pktbuf_pool;
+    }
+
+    /*! Getter for this port's GPU TX packet buffer memory pool
+     *
+     * \return The TX packet buffer pool
+     */
+    inline struct rte_mempool* get_gpu_tx_pktbuf_pool() const
+    {
+        return _gpu_tx_pktbuf_pool;
     }
 
     /*! Determine if the destination address is a broadcast address for this port
@@ -255,6 +291,9 @@ public:
      */
     uint16_t alloc_udp_port(uint16_t udp_port);
 
+    void to_cpu();
+    void to_gpu();
+
 private:
     friend uhd::transport::dpdk_io_service;
 
@@ -265,9 +304,12 @@ private:
 
     port_id_t _port;
     size_t _mtu;
-    size_t _num_queues;
-    struct rte_mempool* _rx_pktbuf_pool;
-    struct rte_mempool* _tx_pktbuf_pool;
+    size_t _num_rx_queues;
+    size_t _num_tx_queues;
+    struct rte_mempool* _cpu_rx_pktbuf_pool;
+    struct rte_mempool* _cpu_tx_pktbuf_pool;
+    struct rte_mempool* _gpu_rx_pktbuf_pool;
+    struct rte_mempool* _gpu_tx_pktbuf_pool;
     struct rte_ether_addr _mac_addr;
     rte_ipv4_addr _ipv4;
     rte_ipv4_addr _netmask;
@@ -280,6 +322,8 @@ private:
     // Structures protected by spin lock
     rte_spinlock_t _spinlock = RTE_SPINLOCK_INITIALIZER;
     std::unordered_map<rte_ipv4_addr, struct arp_entry*> _arp_table;
+
+    rte_flow *_flow; //CPU or QPU queue
 };
 
 
@@ -333,9 +377,15 @@ public:
 
     /*!
      * \param port_id NIC port ID
-     * \return Returns number of DMA queues available for a given port
+     * \return Returns number of DMA RX queues available for a given port
      */
-    int get_port_queue_count(port_id_t portid);
+    int get_port_rx_queue_count(port_id_t portid);
+
+    /*!
+     * \param port_id NIC port ID
+     * \return Returns number of DMA TX queues available for a given port
+     */
+    int get_port_tx_queue_count(port_id_t portid);
 
     /*!
      * \param portid NIC port ID
@@ -359,6 +409,9 @@ public:
      */
     std::shared_ptr<uhd::transport::dpdk_io_service> get_io_service(const size_t port_id);
 
+    void to_gpu();
+    void to_cpu();
+
 private:
     /*! Convert the args to DPDK's EAL args and Initialize the EAL
      *
@@ -373,7 +426,7 @@ private:
      * \param num_bufs Number of buffers to allocate to the pool
      * \return A pointer to the memory pool
      */
-    struct rte_mempool* _get_rx_pktbuf_pool(unsigned int cpu_socket, size_t num_bufs);
+    struct rte_mempool* _get_cpu_rx_pktbuf_pool(unsigned int cpu_socket, size_t num_bufs);
 
     /*! Either allocate or return a pointer to the TX packet buffer pool for the
      * given CPU socket
@@ -382,7 +435,11 @@ private:
      * \param num_bufs Number of buffers to allocate to the pool
      * \return A pointer to the memory pool
      */
-    struct rte_mempool* _get_tx_pktbuf_pool(unsigned int cpu_socket, size_t num_bufs);
+    struct rte_mempool* _get_cpu_tx_pktbuf_pool(unsigned int cpu_socket, size_t num_bufs);
+
+    int _gpu_id;
+    //struct rte_pktmbuf_extmem _ext_mem; //GPU
+    std::unordered_map<port_id_t, struct rte_pktmbuf_extmem> _ext_mems;
 
     size_t _mtu;
     int _num_mbufs;
@@ -392,8 +449,10 @@ private:
     std::atomic<bool> _init_done;
     uhd::dict<uint32_t, port_id_t> _routes;
     std::unordered_map<port_id_t, dpdk_port::uptr> _ports;
-    std::vector<struct rte_mempool*> _rx_pktbuf_pools;
-    std::vector<struct rte_mempool*> _tx_pktbuf_pools;
+    std::vector<struct rte_mempool*> _cpu_rx_pktbuf_pools;
+    std::vector<struct rte_mempool*> _cpu_tx_pktbuf_pools;
+    std::vector<struct rte_mempool*> _gpu_rx_pktbuf_pools;
+    std::vector<struct rte_mempool*> _gpu_tx_pktbuf_pools;
     // Store all the I/O services, and also store the corresponding port ID
     std::map<std::shared_ptr<uhd::transport::dpdk_io_service>, std::vector<size_t>>
         _io_srv_portid_map;

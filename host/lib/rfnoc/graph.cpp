@@ -254,6 +254,26 @@ void graph_t::release()
     _release_count++;
 }
 
+void graph_t::to_cpu()
+{
+    std::lock_guard<std::recursive_mutex> l(_graph_mutex);
+    UHD_LOG_TRACE(LOG_ID, "graph::to_cpu()");
+
+    if (not _flow_to_gpu) {
+        throw uhd::runtime_error("flow to cpu");
+    }
+}
+
+void graph_t::to_gpu()
+{
+    std::lock_guard<std::recursive_mutex> l(_graph_mutex);
+    UHD_LOG_TRACE(LOG_ID, "graph::to_gpu()");
+
+    if (_flow_to_gpu) {
+        throw uhd::runtime_error("flow to gpu");
+    }
+}
+
 void graph_t::shutdown()
 {
     std::lock_guard<std::recursive_mutex> l(_graph_mutex);

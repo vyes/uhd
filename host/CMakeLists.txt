@@ -14,7 +14,7 @@ cmake_minimum_required(VERSION 3.8)
 if(POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW) # Suppress Version warnings
 endif(POLICY CMP0048)
-project(UHD CXX C)
+project(UHD LANGUAGES CXX C CUDA)
 enable_testing()
 
 #make sure our local CMake Modules path comes first

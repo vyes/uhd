@@ -100,6 +100,9 @@ public:
      * \return The I/O service manager instance
      */
     static sptr make(const uhd::device_addr_t& args);
+
+    virtual void to_cpu() = 0;
+    virtual void to_gpu() = 0;
 };
 
 }} // namespace uhd::usrp

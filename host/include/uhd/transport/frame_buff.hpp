@@ -55,12 +55,24 @@ public:
         _packet_size = size;
     }
 
+    bool data_on_gpu() const
+    {
+        return _data_on_gpu;
+    }
+
+    void set_data_on_gpu(bool value)
+    {
+        _data_on_gpu = value;
+    }
+
 protected:
     /*! Pointer to data of current frame */
     void* _data = nullptr;
 
     /*! Size of packet in current frame */
     size_t _packet_size = 0;
+
+    bool _data_on_gpu = false;
 };
 
 }} // namespace uhd::transport

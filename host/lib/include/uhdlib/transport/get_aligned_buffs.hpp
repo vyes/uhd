@@ -71,6 +71,9 @@ public:
                 try {
                     std::tie(frame_buff, info, seq_error) =
                         xport->get_recv_buff(timeout_ms);
+                    UHD_LOG_TRACE("STREAMER", "() "
+                        << "!frame_buff=" << (!frame_buff)
+                    );
                 } catch (const uhd::value_error& e) {
                     // Bad packet
                     UHD_LOGGER_ERROR("STREAMER")
@@ -82,6 +85,7 @@ public:
             }
 
             if (!frame_buff) {
+                UHD_LOG_TRACE("STREAMER", "() timeout");
                 return TIMEOUT;
             }
 
@@ -114,6 +118,9 @@ public:
                     // align those.
                     for (size_t i = 0; i < _xports.size(); i++) {
                         if (!_channels_to_align.test(i) && _infos[i].has_tsf) {
+                            UHD_LOG_TRACE("STREAMER", "()"
+                                << "release_recv_buff " << i
+                            );
                             _xports[i]->release_recv_buff(std::move(_frame_buffs[i]));
                             _frame_buffs[i] = nullptr;
                         }
@@ -133,6 +140,9 @@ public:
 
                 // Otherwise, time is smaller than other channels, release the buffer
                 else {
+                    UHD_LOG_TRACE("STREAMER", "()"
+                        << "release_recv_buff "
+                    );
                     _xports[chan]->release_recv_buff(std::move(_frame_buffs[chan]));
                     _frame_buffs[chan] = nullptr;
                 }
