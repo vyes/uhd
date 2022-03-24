@@ -12,7 +12,13 @@
 #include <rte_gpudev.h>
 
 //NVIDIA GDRCopy
-#include <gdrapi.h>
+//#include <gdrapi.h>
+#define GPU_PAGE_SHIFT 16
+#define GPU_PAGE_SIZE (1UL << GPU_PAGE_SHIFT)
+#define GPU_PAGE_OFFSET (GPU_PAGE_SIZE - 1)
+#define GPU_PAGE_MASK (~GPU_PAGE_OFFSET)
+
+#define CPU_PAGE_SIZE 4096
 
 #include <uhd/utils/algorithm.hpp>
 #include <uhd/utils/log.hpp>
@@ -981,7 +987,7 @@ void dpdk_ctx::init(const device_addr_t& user_args)
                     ext_mem.buf_len = RTE_ALIGN_CEIL(_num_mbufs * ext_mem.elt_size, GPU_PAGE_SIZE); //CEIL???
                     ext_mem.buf_iova = RTE_BAD_IOVA;
 
-                    ext_mem.buf_ptr = rte_gpu_mem_alloc(_gpu_id, ext_mem.buf_len);
+                    ext_mem.buf_ptr = rte_gpu_mem_alloc(_gpu_id, ext_mem.buf_len, CPU_PAGE_SIZE);
                     if (ext_mem.buf_ptr == NULL) {
                         UHD_LOG_ERROR("DPDK", "Could not allocate GPU device memory!");
                         throw uhd::runtime_error("Could not allocate GPU device memory!");
